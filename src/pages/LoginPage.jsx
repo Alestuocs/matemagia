@@ -117,7 +117,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex justify-center gap-2 mt-4 flex-wrap">
-          {['1ro','2do','3ro','4to','5to','6to'].map(g => (
+          {['1ro','2do','3ro','4to','5to','6to','7mo','8vo'].map(g => (
             <span key={g} className="bg-white/15 text-white/80 font-bold px-3 py-1 rounded-full text-xs border border-white/20">{g} básico</span>
           ))}
         </div>
