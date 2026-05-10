@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { CURRICULUM } from '../lib/curriculum'
+import { CURRICULUM, GRADE_LABELS } from '../lib/curriculum'
 
 export default function ParentDashboard() {
   const { user, signOut } = useAuth()
@@ -151,10 +151,16 @@ export default function ParentDashboard() {
         {loading ? (
           <div className="text-center py-8 text-gray-400">Cargando...</div>
         ) : children.length === 0 ? (
-          <div className="bg-white rounded-3xl p-8 text-center shadow-sm border border-green-100">
-            <div className="text-5xl mb-3">👧</div>
-            <p className="font-black text-gray-700">Aún no tienes estudiantes vinculados</p>
-            <p className="text-gray-400 text-sm mt-1">Genera un código de invitación y compártelo</p>
+          <div className="bg-white rounded-3xl p-8 text-center shadow-sm border border-green-100 space-y-3">
+            <div className="text-5xl">👧</div>
+            <p className="font-black text-gray-700 text-lg">Aún no tienes estudiantes vinculados</p>
+            <p className="text-gray-500 text-sm">Para ver el progreso de tu hijo/a:</p>
+            <ol className="text-left text-sm text-gray-600 space-y-1 bg-green-50 rounded-2xl p-4 border border-green-100">
+              <li><span className="font-bold text-green-700">1.</span> Toca <span className="font-bold">+ Vincular hijo/a</span> arriba</li>
+              <li><span className="font-bold text-green-700">2.</span> Genera un código de invitación</li>
+              <li><span className="font-bold text-green-700">3.</span> Comparte el código con tu hijo/a</li>
+              <li><span className="font-bold text-green-700">4.</span> Tu hijo/a lo ingresa en <span className="font-bold">Perfil → Vincularme con mi apoderado</span></li>
+            </ol>
           </div>
         ) : (
           children.map(child => (
@@ -173,7 +179,11 @@ export default function ParentDashboard() {
 
 function ChildCard({ child }) {
   const p = child.progress
-  if (!p) return null
+  if (!p) return (
+    <div className="bg-white rounded-3xl p-5 shadow-sm border border-green-100 text-center text-gray-400 text-sm py-8">
+      Cargando progreso de {child.full_name || 'estudiante'}...
+    </div>
+  )
 
   const completedCount = p.completed_topics?.length || 0
   const totalTopics = CURRICULUM.length
@@ -189,7 +199,7 @@ function ChildCard({ child }) {
         )}
         <div>
           <h3 className="font-black text-gray-800">{p.student_name || child.full_name}</h3>
-          <p className="text-sm text-gray-500">{p.current_grade}ro Básico · {p.xp} XP</p>
+          <p className="text-sm text-gray-500">{GRADE_LABELS[p.current_grade] || `${p.current_grade}ro Básico`} · {p.xp} XP</p>
         </div>
         <div className="ml-auto text-right">
           <div className="text-orange-500 font-black">🔥 {p.streak || 0}</div>

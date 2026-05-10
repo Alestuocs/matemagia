@@ -14,19 +14,25 @@ import MathChat from './pages/MathChat'
 import PracticeMode from './pages/PracticeMode'
 import ParentDashboard from './pages/ParentDashboard'
 
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-yellow-50">
+    <div className="text-center animate-pulse">
+      <img src="/matemagia/logo.png" alt="MateMagia" className="w-24 h-24 mx-auto mb-3 object-contain" />
+      <p className="font-black text-magic-600 text-xl">Cargando MateMagia...</p>
+    </div>
+  </div>
+)
+
 function AppRoutes() {
   const { user, loading } = useAuth()
-  const { progress } = useProgress()
+  const { progress, synced } = useProgress()
   const location = useLocation()
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-yellow-50">
-      <div className="text-center animate-pulse">
-        <img src="/matemagia/logo.png" alt="MateMagia" className="w-24 h-24 mx-auto mb-3 object-contain" />
-        <p className="font-black text-magic-600 text-xl">Cargando MateMagia...</p>
-      </div>
-    </div>
-  )
+  // Auth still resolving
+  if (loading) return <LoadingScreen />
+
+  // User is logged in but Supabase progress hasn't loaded yet — avoid premature redirect
+  if (user && !synced) return <LoadingScreen />
 
   const isLessonPage = location.pathname.startsWith('/lesson')
   const isParent = progress.role === 'parent'

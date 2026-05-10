@@ -44,10 +44,17 @@ export function ProgressProvider({ children }) {
   const { user } = useAuth()
   const [progress, setProgress] = useState(loadLocal)
   const [loading, setLoading] = useState(false)
+  const [synced, setSynced] = useState(false)
 
   // Sync progress to/from Supabase when user changes
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      // Clear stale local cache on logout so it doesn't bleed into next session
+      localStorage.removeItem('mm_progress')
+      setSynced(true)
+      return
+    }
+    setSynced(false)
     loadFromSupabase()
   }, [user?.id])
 
@@ -110,6 +117,7 @@ export function ProgressProvider({ children }) {
       console.warn('Supabase load error, using local:', e)
     } finally {
       setLoading(false)
+      setSynced(true)
     }
   }
 
@@ -280,6 +288,7 @@ export function ProgressProvider({ children }) {
   const value = {
     progress,
     loading,
+    synced,
     saveAttempt,
     completeTopic,
     setProfile,
