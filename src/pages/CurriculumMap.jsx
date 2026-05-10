@@ -1,0 +1,112 @@
+import { useNavigate } from 'react-router-dom'
+import { useProgress } from '../contexts/ProgressContext'
+import { CURRICULUM, GRADE_LABELS } from '../lib/curriculum'
+import TopBar from '../components/layout/TopBar'
+
+const GRADE_COLORS = {
+  1: 'from-green-400 to-emerald-500',
+  2: 'from-blue-400 to-cyan-500',
+  3: 'from-purple-400 to-violet-500',
+  4: 'from-orange-400 to-amber-500',
+  5: 'from-pink-400 to-rose-500',
+  6: 'from-red-400 to-ruby-500',
+}
+
+const GRADE_BG = {
+  1: 'bg-green-50 border-green-200',
+  2: 'bg-blue-50 border-blue-200',
+  3: 'bg-purple-50 border-purple-200',
+  4: 'bg-orange-50 border-orange-200',
+  5: 'bg-pink-50 border-pink-200',
+  6: 'bg-red-50 border-red-200',
+}
+
+export default function CurriculumMap() {
+  const navigate = useNavigate()
+  const { progress } = useProgress()
+
+  const grades = [1, 2, 3, 4, 5, 6]
+
+  return (
+    <div className="pb-24">
+      <TopBar title="Mapa de aprendizaje 🗺️" showBack={false} showXP />
+
+      <div className="px-4 max-w-lg mx-auto space-y-6 mt-4">
+        {grades.map(grade => {
+          const topics = CURRICULUM.filter(t => t.gradeLevel === grade)
+          const completed = topics.filter(t => progress.completedTopics.includes(t.id)).length
+          const pct = Math.round((completed / topics.length) * 100)
+
+          return (
+            <div key={grade} className={`rounded-3xl border-2 p-4 ${GRADE_BG[grade]}`}>
+              {/* Grade header */}
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="font-black text-lg text-gray-800">{GRADE_LABELS[grade]}</h2>
+                  <div className="text-sm text-gray-500 font-semibold">{completed}/{topics.length} temas</div>
+                </div>
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${GRADE_COLORS[grade]} flex items-center justify-center font-black text-white text-xl`}>
+                  {grade}
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-2 bg-white rounded-full overflow-hidden mb-4 border border-gray-200">
+                <div
+                  className={`h-full bg-gradient-to-r ${GRADE_COLORS[grade]} rounded-full transition-all duration-700`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+
+              {/* Topics */}
+              <div className="space-y-2">
+                {topics.map((topic, i) => {
+                  const isCompleted = progress.completedTopics.includes(topic.id)
+                  const isUnlocked = progress.unlockedTopics.includes(topic.id)
+                  const stars = progress.topicStars[topic.id] || 0
+                  const isCurrent = isUnlocked && !isCompleted
+
+                  return (
+                    <button
+                      key={topic.id}
+                      onClick={() => isUnlocked && navigate(`/lesson/${topic.id}`)}
+                      disabled={!isUnlocked}
+                      className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all active:scale-95 ${
+                        isCompleted
+                          ? 'bg-green-100 border-green-300'
+                          : isCurrent
+                          ? 'bg-white border-magic-400 animate-pulse-glow'
+                          : 'bg-white/50 border-gray-200 opacity-60'
+                      }`}
+                    >
+                      <span className="text-2xl">{topic.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-black truncate ${isCompleted ? 'text-green-700' : isCurrent ? 'text-magic-700' : 'text-gray-400'}`}>
+                          {topic.title}
+                        </div>
+                        <div className="text-xs text-gray-400 font-semibold truncate">{topic.description}</div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {isCompleted ? (
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3].map(s => (
+                              <span key={s} className={`text-sm ${s <= stars ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
+                            ))}
+                          </div>
+                        ) : isCurrent ? (
+                          <span className="text-magic-500 font-black text-sm">▶</span>
+                        ) : (
+                          <span className="text-gray-300 text-lg">🔒</span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
