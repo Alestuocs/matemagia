@@ -20,6 +20,7 @@ const DEFAULT_PROGRESS = {
   achievements: [],
   currentGrade: 1,
   studentName: '',
+  parentEmail: '',
   assessmentDone: false,
   lastDate: null,
 }
@@ -75,6 +76,7 @@ export function ProgressProvider({ children }) {
           achievements: data.achievements || [],
           currentGrade: data.current_grade || 1,
           studentName: data.student_name || '',
+          parentEmail: data.parent_email || '',
           assessmentDone: data.assessment_done || false,
         }
         setProgress(remote)
@@ -97,6 +99,7 @@ export function ProgressProvider({ children }) {
           achievements: local.achievements,
           current_grade: local.currentGrade,
           student_name: local.studentName,
+          parent_email: local.parentEmail,
           assessment_done: local.assessmentDone,
         })
       }
@@ -128,6 +131,7 @@ export function ProgressProvider({ children }) {
         achievements: newProgress.achievements,
         current_grade: newProgress.currentGrade,
         student_name: newProgress.studentName,
+        parent_email: newProgress.parentEmail,
         assessment_done: newProgress.assessmentDone,
         updated_at: new Date().toISOString(),
       })
@@ -219,10 +223,11 @@ export function ProgressProvider({ children }) {
     return earned
   }
 
-  function setProfile(name, grade) {
-    const updated = { ...progress, studentName: name, currentGrade: grade, assessmentDone: true }
-    const firstTopics = CURRICULUM.filter(t => t.gradeLevel <= grade).map(t => t.id).slice(0, 3)
-    updated.unlockedTopics = [...new Set([...progress.unlockedTopics, ...firstTopics])]
+  function setProfile(name, grade, parentEmail = '') {
+    const updated = { ...progress, studentName: name, currentGrade: grade, parentEmail, assessmentDone: true }
+    // Unlock ALL topics up to and including the student's grade level
+    const allTopicsUpToGrade = CURRICULUM.filter(t => t.gradeLevel <= grade).map(t => t.id)
+    updated.unlockedTopics = [...new Set([...progress.unlockedTopics, ...allTopicsUpToGrade])]
     persistProgress(updated)
   }
 

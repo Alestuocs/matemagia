@@ -39,14 +39,20 @@ function AppRoutes() {
           element={
             !user
               ? <LoginPage />
-              : !progress.assessmentDone
+              : !(progress.assessmentDone && progress.studentName)
               ? <Navigate to="/assessment" replace />
               : <Dashboard />
           }
         />
         <Route
           path="/assessment"
-          element={user ? <AssessmentPage /> : <Navigate to="/" replace />}
+          element={
+            !user
+              ? <Navigate to="/" replace />
+              : (progress.assessmentDone && progress.studentName)
+              ? <Navigate to="/" replace />
+              : <AssessmentPage />
+          }
         />
         <Route
           path="/map"

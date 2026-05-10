@@ -9,7 +9,7 @@ const GRADE_COLORS = {
   3: 'from-purple-400 to-violet-500',
   4: 'from-orange-400 to-amber-500',
   5: 'from-pink-400 to-rose-500',
-  6: 'from-red-400 to-ruby-500',
+  6: 'from-red-400 to-orange-500',
 }
 
 const GRADE_BG = {
@@ -25,6 +25,7 @@ export default function CurriculumMap() {
   const navigate = useNavigate()
   const { progress } = useProgress()
 
+  const currentGrade = progress.currentGrade || 1
   const grades = [1, 2, 3, 4, 5, 6]
 
   return (
@@ -36,13 +37,32 @@ export default function CurriculumMap() {
           const topics = CURRICULUM.filter(t => t.gradeLevel === grade)
           const completed = topics.filter(t => progress.completedTopics.includes(t.id)).length
           const pct = Math.round((completed / topics.length) * 100)
+          const isCurrentGrade = grade === currentGrade
+          const isPreviousGrade = grade < currentGrade
+          const isFutureGrade = grade > currentGrade
+
+          // Skip fully locked future grades that have no unlocked topics
+          const hasAnyUnlocked = topics.some(t => progress.unlockedTopics.includes(t.id))
+          if (isFutureGrade && !hasAnyUnlocked) return null
 
           return (
             <div key={grade} className={`rounded-3xl border-2 p-4 ${GRADE_BG[grade]}`}>
               {/* Grade header */}
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="font-black text-lg text-gray-800">{GRADE_LABELS[grade]}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-black text-lg text-gray-800">{GRADE_LABELS[grade]}</h2>
+                    {isPreviousGrade && (
+                      <span className="text-xs font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">
+                        Repaso
+                      </span>
+                    )}
+                    {isCurrentGrade && (
+                      <span className="text-xs font-bold bg-magic-100 text-magic-700 px-2 py-0.5 rounded-full">
+                        Tu grado
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-gray-500 font-semibold">{completed}/{topics.length} temas</div>
                 </div>
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${GRADE_COLORS[grade]} flex items-center justify-center font-black text-white text-xl`}>
@@ -53,18 +73,19 @@ export default function CurriculumMap() {
               {/* Progress bar */}
               <div className="h-2 bg-white rounded-full overflow-hidden mb-4 border border-gray-200">
                 <div
-                  className={`h-full bg-gradient-to-r ${GRADE_COLORS[grade]} rounded-full transition-all duration-700`}
+                  className={`h-full bg-gradient-to-r ${isPreviousGrade ? 'from-blue-400 to-cyan-400' : GRADE_COLORS[grade]} rounded-full transition-all duration-700`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
 
               {/* Topics */}
               <div className="space-y-2">
-                {topics.map((topic, i) => {
+                {topics.map((topic) => {
                   const isCompleted = progress.completedTopics.includes(topic.id)
                   const isUnlocked = progress.unlockedTopics.includes(topic.id)
                   const stars = progress.topicStars[topic.id] || 0
                   const isCurrent = isUnlocked && !isCompleted
+                  const isReview = isPreviousGrade
 
                   return (
                     <button
@@ -74,6 +95,8 @@ export default function CurriculumMap() {
                       className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all active:scale-95 ${
                         isCompleted
                           ? 'bg-green-100 border-green-300'
+                          : isCurrent && isReview
+                          ? 'bg-blue-50 border-blue-300 hover:bg-blue-100'
                           : isCurrent
                           ? 'bg-white border-magic-400 animate-pulse-glow'
                           : 'bg-white/50 border-gray-200 opacity-60'
@@ -81,7 +104,15 @@ export default function CurriculumMap() {
                     >
                       <span className="text-2xl">{topic.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <div className={`font-black truncate ${isCompleted ? 'text-green-700' : isCurrent ? 'text-magic-700' : 'text-gray-400'}`}>
+                        <div className={`font-black truncate ${
+                          isCompleted
+                            ? 'text-green-700'
+                            : isCurrent && isReview
+                            ? 'text-blue-600'
+                            : isCurrent
+                            ? 'text-magic-700'
+                            : 'text-gray-400'
+                        }`}>
                           {topic.title}
                         </div>
                         <div className="text-xs text-gray-400 font-semibold truncate">{topic.description}</div>
@@ -93,6 +124,8 @@ export default function CurriculumMap() {
                               <span key={s} className={`text-sm ${s <= stars ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
                             ))}
                           </div>
+                        ) : isCurrent && isReview ? (
+                          <span className="text-blue-400 font-black text-sm">▶</span>
                         ) : isCurrent ? (
                           <span className="text-magic-500 font-black text-sm">▶</span>
                         ) : (
@@ -103,6 +136,12 @@ export default function CurriculumMap() {
                   )
                 })}
               </div>
+
+              {isPreviousGrade && (
+                <p className="text-xs text-blue-500 font-semibold text-center mt-3">
+                  Repaso opcional — refuerza tus bases
+                </p>
+              )}
             </div>
           )
         })}

@@ -1072,12 +1072,366 @@ export const CURRICULUM = [
 
   // ── GRADE 6 ──────────────────────────────────
   {
+    id: 'fracciones-mixtos-1',
+    title: 'Fracciones impropias y números mixtos',
+    description: 'Convierte entre fracciones impropias y números mixtos',
+    gradeLevel: 6,
+    icon: '🍕',
+    orderIndex: 22,
+    type: 'fractions',
+    lessonSlides: [
+      {
+        title: '¿Qué son las fracciones impropias?',
+        content: 'Una fracción impropia tiene el numerador mayor o igual al denominador.\nEjemplo: 7/3 es impropia porque 7 > 3.',
+        visual: '7/3 → ¡el numerador es mayor!',
+      },
+      {
+        title: 'Convertir fracción impropia a número mixto',
+        content: 'Divide el numerador por el denominador.\n7 ÷ 3 = 2 con resto 1\nEl cociente (2) es el entero, el resto (1) es el nuevo numerador.\n7/3 = 2 1/3',
+        visual: '7/3 = 2 enteros + 1/3 = 2 1/3',
+      },
+      {
+        title: 'Convertir número mixto a fracción impropia',
+        content: 'Multiplica el entero por el denominador, luego suma el numerador.\n2 1/4: (2 × 4) + 1 = 9\nResultado: 9/4',
+        visual: '2 1/4 → (2×4)+1 = 9 → 9/4',
+      },
+    ],
+    tips: [
+      'Divide el numerador por el denominador',
+      'El cociente es el entero, el resto es el nuevo numerador',
+      'Para volver: entero × denominador + numerador',
+    ],
+    generateExercises: (count = 5) => {
+      return Array.from({ length: count }, (_, i) => {
+        const den = Math.floor(Math.random() * 5) + 2 // 2-6
+        const whole = Math.floor(Math.random() * 4) + 1 // 1-4
+        const rem = Math.floor(Math.random() * (den - 1)) + 1 // 1 to den-1
+        const num = whole * den + rem
+        const toMixed = i % 2 === 0
+        if (toMixed) {
+          return {
+            id: `fracmix-${i}-${Date.now()}`,
+            type: 'multiple-choice',
+            question: `Convierte ${num}/${den} a número mixto`,
+            answer: `${whole} ${rem}/${den}`,
+            options: [
+              `${whole} ${rem}/${den}`,
+              `${whole + 1} ${rem}/${den}`,
+              `${whole} ${rem + 1}/${den}`,
+              `${whole - 1} ${rem}/${den}`,
+            ].sort(() => Math.random() - 0.5),
+            hint: `Divide ${num} ÷ ${den}: cociente = ${whole}, resto = ${rem}`,
+            explanation: `${num} ÷ ${den} = ${whole} con resto ${rem}\nEntonces ${num}/${den} = ${whole} ${rem}/${den}`,
+            difficulty: 3,
+            xpReward: 25,
+          }
+        } else {
+          return {
+            id: `fracmix-${i}-${Date.now()}`,
+            type: 'multiple-choice',
+            question: `Convierte ${whole} ${rem}/${den} a fracción impropia`,
+            answer: `${num}/${den}`,
+            options: [
+              `${num}/${den}`,
+              `${num + 1}/${den}`,
+              `${whole * den}/${den}`,
+              `${num}/${den + 1}`,
+            ].sort(() => Math.random() - 0.5),
+            hint: `Multiplica: ${whole} × ${den} = ${whole * den}, luego suma ${rem}: ${whole * den} + ${rem} = ${num}`,
+            explanation: `${whole} ${rem}/${den}: (${whole} × ${den}) + ${rem} = ${whole * den + rem}\nResultado: ${num}/${den}`,
+            difficulty: 3,
+            xpReward: 25,
+          }
+        }
+      })
+    },
+  },
+
+  {
+    id: 'fracciones-recta',
+    title: 'Fracciones en la recta numérica',
+    description: 'Compara y ordena fracciones en la recta numérica',
+    gradeLevel: 6,
+    icon: '📏',
+    orderIndex: 23,
+    type: 'fractions',
+    lessonSlides: [
+      {
+        title: 'Fracciones en la recta',
+        content: 'Podemos ubicar fracciones en una recta numérica.\nEntre 0 y 1 hay infinitas fracciones: 1/4, 1/2, 3/4...',
+        visual: '0 ──── 1/4 ──── 1/2 ──── 3/4 ──── 1',
+      },
+      {
+        title: 'Comparar fracciones',
+        content: 'Para comparar fracciones con igual denominador: compara los numeradores.\n3/5 > 2/5 porque 3 > 2\nPara diferente denominador: convierte a común denominador.',
+        visual: '2/5 < 3/5 | 1/3 < 1/2',
+      },
+    ],
+    tips: [
+      'Mismo denominador: compara numeradores',
+      'Diferente denominador: busca denominador común',
+      'Mayor fracción = más a la derecha en la recta',
+    ],
+    generateExercises: (count = 5) => {
+      return Array.from({ length: count }, (_, i) => {
+        const den = [2, 3, 4, 5, 6, 8, 10][Math.floor(Math.random() * 7)]
+        const n1 = Math.floor(Math.random() * (den - 1)) + 1
+        let n2 = Math.floor(Math.random() * (den - 1)) + 1
+        while (n2 === n1) n2 = Math.floor(Math.random() * (den - 1)) + 1
+        const symbol = n1 > n2 ? '>' : n1 < n2 ? '<' : '='
+        return {
+          id: `fracrecta-${i}-${Date.now()}`,
+          type: 'multiple-choice',
+          question: `¿Qué símbolo va entre ${n1}/${den} ___ ${n2}/${den}?`,
+          answer: symbol,
+          options: ['>', '<', '='].sort(() => Math.random() - 0.5),
+          hint: `Ambas tienen denominador ${den}, compara los numeradores: ${n1} y ${n2}`,
+          explanation: `${n1}/${den} ${symbol} ${n2}/${den} porque ${n1} ${symbol} ${n2}`,
+          difficulty: 3,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'multiplicacion-decimales',
+    title: 'Multiplicación de decimales',
+    description: 'Multiplica números con coma decimal',
+    gradeLevel: 6,
+    icon: '✖️',
+    orderIndex: 24,
+    type: 'decimals',
+    lessonSlides: [
+      {
+        title: 'Multiplicar decimales',
+        content: 'Para multiplicar decimales:\n1. Multiplica ignorando la coma\n2. Cuenta los lugares decimales en total\n3. Coloca la coma en el resultado',
+        visual: '2,3 × 0,45 → 23 × 45 = 1035 → 3 decimales → 1,035',
+      },
+      {
+        title: 'Ejemplo paso a paso',
+        content: '2,3 × 0,45:\n- 2,3 tiene 1 decimal\n- 0,45 tiene 2 decimales\n- Total: 3 decimales\n- 23 × 45 = 1035\n- Resultado: 1,035',
+        visual: '2,3 × 0,45 = 1,035',
+      },
+    ],
+    tips: [
+      'Cuenta los decimales de ambos factores',
+      'Multiplica como si fueran enteros',
+      'Luego coloca la coma sumando los decimales',
+    ],
+    generateExercises: (count = 5) => {
+      return Array.from({ length: count }, (_, i) => {
+        const a = Math.round((Math.random() * 9 + 1) * 10) / 10  // 1 decimal 1.0-9.9
+        const b = Math.round((Math.random() * 4 + 0.1) * 10) / 10  // 1 decimal 0.1-4.9
+        const ans = Math.round(a * b * 100) / 100
+        const type = i % 2 === 0 ? 'multiple-choice' : 'write-answer'
+        const aStr = a.toFixed(1).replace('.', ',')
+        const bStr = b.toFixed(1).replace('.', ',')
+        const ansStr = ans.toString().replace('.', ',')
+        const wrong1 = (Math.round((a * b * 10)) / 10).toString().replace('.', ',')
+        const wrong2 = (Math.round((a * b * 1000)) / 1000).toString().replace('.', ',')
+        const wrong3 = (Math.round((a + b) * 100) / 100).toString().replace('.', ',')
+        return {
+          id: `multdec-${i}-${Date.now()}`,
+          type,
+          question: `¿Cuánto es ${aStr} × ${bStr}?`,
+          answer: ansStr,
+          options: type === 'multiple-choice'
+            ? [ansStr, wrong1, wrong2, wrong3].filter((v, idx, arr) => arr.indexOf(v) === idx).slice(0, 4).sort(() => Math.random() - 0.5)
+            : null,
+          hint: `${aStr} tiene 1 decimal, ${bStr} tiene 1 decimal → 2 decimales en total`,
+          explanation: `${aStr} × ${bStr}:\n1. Ignora la coma: ${Math.round(a * 10)} × ${Math.round(b * 10)} = ${Math.round(a * 10) * Math.round(b * 10)}\n2. 1+1=2 lugares decimales\n3. Resultado: ${ansStr}`,
+          difficulty: 4,
+          xpReward: 30,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'division-decimales',
+    title: 'División de decimales',
+    description: 'Divide números con coma decimal',
+    gradeLevel: 6,
+    icon: '➗',
+    orderIndex: 25,
+    type: 'decimals',
+    lessonSlides: [
+      {
+        title: 'Dividir decimales',
+        content: 'Para dividir decimales, amplifica ambos números para eliminar la coma.\n3,6 ÷ 1,2 → multiplica por 10 → 36 ÷ 12 = 3',
+        visual: '3,6 ÷ 1,2 = 36 ÷ 12 = 3',
+      },
+      {
+        title: 'División con decimal solo en dividendo',
+        content: 'Si solo el dividendo tiene decimal:\n4,8 ÷ 4 = ?\nPiensa: 4,8 = 48 décimas\n48 ÷ 4 = 12 décimas = 1,2',
+        visual: '4,8 ÷ 4 = 1,2',
+      },
+    ],
+    tips: [
+      'Amplifica multiplicando por 10, 100, etc. para eliminar comas',
+      'Divide normalmente una vez que no hay decimales',
+      'Comprueba multiplicando: resultado × divisor = dividendo',
+    ],
+    generateExercises: (count = 5) => {
+      return Array.from({ length: count }, (_, i) => {
+        const q = Math.floor(Math.random() * 9) + 1
+        const b = Math.floor(Math.random() * 5) + 2
+        const a = q * b
+        // Create decimal version: a/10 ÷ b = q/10
+        const aDec = (a / 10).toFixed(1).replace('.', ',')
+        const ansDec = (q / 10).toFixed(1).replace('.', ',')
+        const type = i % 2 === 0 ? 'multiple-choice' : 'write-answer'
+        const wrong1 = ((q + 1) / 10).toFixed(1).replace('.', ',')
+        const wrong2 = ((q * 2) / 10).toFixed(1).replace('.', ',')
+        const wrong3 = (q).toString()
+        return {
+          id: `divdec-${i}-${Date.now()}`,
+          type,
+          question: `¿Cuánto es ${aDec} ÷ ${b}?`,
+          answer: ansDec,
+          options: type === 'multiple-choice'
+            ? [ansDec, wrong1, wrong2, wrong3].filter((v, idx, arr) => arr.indexOf(v) === idx).slice(0, 4).sort(() => Math.random() - 0.5)
+            : null,
+          hint: `${aDec} × 10 = ${a}. Entonces ${a} ÷ ${b} = ${q}, luego divide por 10`,
+          explanation: `${aDec} ÷ ${b}:\nAmplifica: ${aDec} × 10 = ${a}\n${a} ÷ ${b} = ${q}\nDivide por 10: ${q} ÷ 10 = ${ansDec}`,
+          difficulty: 4,
+          xpReward: 30,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'ecuaciones-basicas',
+    title: 'Ecuaciones - Introducción',
+    description: 'Aprende qué es una ecuación y encuentra el valor desconocido',
+    gradeLevel: 6,
+    icon: '⚖️',
+    orderIndex: 26,
+    type: 'algebra',
+    lessonSlides: [
+      {
+        title: '¿Qué es una ecuación?',
+        content: 'Una ecuación es como una balanza en equilibrio.\nAmbos lados deben ser iguales.\nx + 3 = 7 → ¿qué valor tiene x?',
+        visual: '⚖️ x + 3 = 7 → x = 4',
+      },
+      {
+        title: 'Encontrar el valor de x',
+        content: 'Para encontrar x, haz la operación contraria.\nx + 3 = 7 → x = 7 - 3 = 4\nComprueba: 4 + 3 = 7 ✓',
+        visual: 'x + 3 = 7\nx = 7 - 3\nx = 4',
+      },
+      {
+        title: 'Más ejemplos',
+        content: 'x - 5 = 8 → x = 8 + 5 = 13\n3 × x = 12 → x = 12 ÷ 3 = 4',
+        visual: '⚖️ siempre en equilibrio',
+      },
+    ],
+    tips: [
+      'La balanza debe estar siempre equilibrada',
+      'Haz la operación contraria para despejar x',
+      'Suma ↔ Resta | Multiplicación ↔ División',
+      'Comprueba sustituyendo x en la ecuación',
+    ],
+    generateExercises: (count = 5) => {
+      return Array.from({ length: count }, (_, i) => {
+        const x = Math.floor(Math.random() * 15) + 1
+        const ops = ['add', 'sub', 'mul']
+        const op = ops[i % 3]
+        let question, answer, hint, explanation
+        if (op === 'add') {
+          const a = Math.floor(Math.random() * 15) + 1
+          question = `x + ${a} = ${x + a}`
+          answer = x
+          hint = `Resta ${a} de ambos lados: x = ${x + a} - ${a}`
+          explanation = `x + ${a} = ${x + a}\nx = ${x + a} - ${a} = ${x}`
+        } else if (op === 'sub') {
+          const a = Math.floor(Math.random() * 10) + 1
+          question = `x - ${a} = ${x}`
+          answer = x + a
+          hint = `Suma ${a} a ambos lados: x = ${x} + ${a}`
+          explanation = `x - ${a} = ${x}\nx = ${x} + ${a} = ${x + a}`
+        } else {
+          const a = Math.floor(Math.random() * 8) + 2
+          question = `${a} × x = ${a * x}`
+          answer = x
+          hint = `Divide ambos lados por ${a}: x = ${a * x} ÷ ${a}`
+          explanation = `${a} × x = ${a * x}\nx = ${a * x} ÷ ${a} = ${x}`
+        }
+        const type = i % 2 === 0 ? 'multiple-choice' : 'write-answer'
+        return {
+          id: `ecb-${i}-${Date.now()}`,
+          type,
+          question: `⚖️ Resuelve: ${question}`,
+          answer,
+          options: type === 'multiple-choice'
+            ? [answer, answer + 1, answer - 1, answer + 2].filter(v => v > 0).slice(0, 4).sort(() => Math.random() - 0.5)
+            : null,
+          hint,
+          explanation: `${explanation}\nComprobación: ${question.replace('x', answer)} ✓`,
+          difficulty: 4,
+          xpReward: 30,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'ecuaciones-suma-mult',
+    title: 'Ecuaciones con operaciones',
+    description: 'Resuelve ecuaciones con suma y multiplicación combinadas',
+    gradeLevel: 6,
+    icon: '🔢',
+    orderIndex: 27,
+    type: 'algebra',
+    lessonSlides: [
+      {
+        title: 'Ecuaciones de dos pasos',
+        content: 'Algunas ecuaciones necesitan dos operaciones para resolverse.\n2x + 3 = 11\nPaso 1: Resta 3 → 2x = 8\nPaso 2: Divide por 2 → x = 4',
+        visual: '2x + 3 = 11 → 2x = 8 → x = 4',
+      },
+      {
+        title: 'El orden importa',
+        content: 'Para despejar x:\n1. Primero mueve los números (suma/resta)\n2. Luego mueve el coeficiente (divide/multiplica)',
+        visual: '3x - 2 = 7 → 3x = 9 → x = 3',
+      },
+    ],
+    tips: [
+      'Primero despeja los términos sin x',
+      'Luego divide por el coeficiente de x',
+      'Comprueba siempre el resultado',
+    ],
+    generateExercises: (count = 5) => {
+      return Array.from({ length: count }, (_, i) => {
+        const x = Math.floor(Math.random() * 8) + 1
+        const coef = Math.floor(Math.random() * 4) + 2
+        const add = Math.floor(Math.random() * 10) + 1
+        const result = coef * x + add
+        const type = i % 2 === 0 ? 'multiple-choice' : 'write-answer'
+        return {
+          id: `ecsm-${i}-${Date.now()}`,
+          type,
+          question: `⚖️ Resuelve: ${coef}x + ${add} = ${result}`,
+          answer: x,
+          options: type === 'multiple-choice'
+            ? [x, x + 1, x - 1, x + 2].filter(v => v > 0).slice(0, 4).sort(() => Math.random() - 0.5)
+            : null,
+          hint: `Paso 1: ${coef}x = ${result} - ${add} = ${result - add}\nPaso 2: x = ${result - add} ÷ ${coef} = ${x}`,
+          explanation: `${coef}x + ${add} = ${result}\nPaso 1: ${coef}x = ${result} - ${add} = ${result - add}\nPaso 2: x = ${result - add} ÷ ${coef} = ${x}\nComprobación: ${coef} × ${x} + ${add} = ${result} ✓`,
+          difficulty: 5,
+          xpReward: 35,
+        }
+      })
+    },
+  },
+
+  {
     id: 'percentages',
     title: 'Porcentajes',
     description: 'Entiende y calcula porcentajes',
     gradeLevel: 6,
     icon: '%',
-    orderIndex: 22,
+    orderIndex: 28,
     type: 'percentages',
     lessonSlides: [
       {
@@ -1125,7 +1479,7 @@ export const CURRICULUM = [
     description: 'Aplica las matemáticas a situaciones de la vida real',
     gradeLevel: 6,
     icon: '🧩',
-    orderIndex: 23,
+    orderIndex: 29,
     type: 'numbers',
     lessonSlides: [
       {

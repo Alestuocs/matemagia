@@ -189,7 +189,7 @@ export default function LessonPage() {
                   if (next && progress.unlockedTopics.includes(next.id)) {
                     navigate(`/lesson/${next.id}`)
                   } else {
-                    navigate('/')
+                    navigate('/map')
                   }
                 }}
                 className="btn-primary"

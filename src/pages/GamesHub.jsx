@@ -332,6 +332,249 @@ function SortNumbers({ onExit }) {
   )
 }
 
+// ─── Game 4: Fracciones Visuales ───────────────
+function FraccionesVisuales({ onExit }) {
+  const TOTAL = 10
+  const TIME_LIMIT = 60
+  const [started, setStarted] = useState(false)
+  const [qIndex, setQIndex] = useState(0)
+  const [score, setScore] = useState(0)
+  const [finished, setFinished] = useState(false)
+  const [feedback, setFeedback] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(TIME_LIMIT)
+  const { saveAttempt } = useProgress()
+
+  function generateQuestion() {
+    const n = Math.floor(Math.random() * 4) + 2 // 2-5 total slices
+    const m = Math.floor(Math.random() * (n - 1)) + 1 // 1 to n-1 shaded
+    return { n, m, fraction: `${m}/${n}` }
+  }
+
+  const [questions] = useState(() => Array.from({ length: TOTAL }, generateQuestion))
+  const q = questions[qIndex] || questions[0]
+
+  function makeOpts(frac, n, m) {
+    const opts = new Set([frac])
+    while (opts.size < 4) {
+      const wrongN = Math.floor(Math.random() * (n - 1)) + 1
+      if (wrongN !== m) opts.add(`${wrongN}/${n}`)
+      if (opts.size < 4) {
+        const wrongD = Math.floor(Math.random() * 4) + 2
+        if (wrongD !== n) opts.add(`${m}/${wrongD}`)
+      }
+    }
+    return [...opts].slice(0, 4).sort(() => Math.random() - 0.5)
+  }
+
+  useEffect(() => {
+    if (!started || finished) return
+    const timer = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) { clearInterval(timer); setFinished(true); return 0 }
+        return t - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [started, finished])
+
+  function handleAnswer(opt) {
+    if (feedback) return
+    const correct = opt === q.fraction
+    saveAttempt('game-fracciones', correct, correct ? 8 : 0)
+    setFeedback(correct ? 'correct' : 'wrong')
+    if (correct) setScore(s => s + 1)
+    setTimeout(() => {
+      setFeedback(null)
+      if (qIndex + 1 < TOTAL) setQIndex(i => i + 1)
+      else setFinished(true)
+    }, 800)
+  }
+
+  if (!started) {
+    return (
+      <div className="text-center space-y-4 p-4">
+        <div className="text-6xl">🍰</div>
+        <h2 className="text-2xl font-black">Fracciones Visuales</h2>
+        <p className="text-gray-600 font-semibold">Identifica la fracción del pastel — {TOTAL} preguntas en {TIME_LIMIT}s</p>
+        <button onClick={() => setStarted(true)} className="btn-primary w-full text-lg">¡Empezar! 🍕</button>
+        <button onClick={onExit} className="btn-ghost w-full">Volver</button>
+      </div>
+    )
+  }
+
+  if (finished) {
+    return (
+      <div className="text-center space-y-4 p-4">
+        <div className="text-6xl">{score >= 8 ? '🌟' : score >= 5 ? '😊' : '💪'}</div>
+        <h2 className="text-2xl font-black">{score}/{TOTAL} correctas</h2>
+        <p className="text-gray-500 font-semibold">{score >= 8 ? '¡Experto en fracciones! 🎉' : score >= 5 ? '¡Muy bien!' : '¡Sigue practicando!'}</p>
+        <button onClick={() => { setQIndex(0); setScore(0); setFinished(false); setStarted(false); setTimeLeft(TIME_LIMIT) }} className="btn-primary w-full">Jugar de nuevo</button>
+        <button onClick={onExit} className="btn-ghost w-full">Volver</button>
+      </div>
+    )
+  }
+
+  const opts = makeOpts(q.fraction, q.n, q.m)
+  const timerColor = timeLeft > 20 ? 'text-green-500' : timeLeft > 10 ? 'text-yellow-500' : 'text-red-500'
+
+  // Draw pie-like visual using divs
+  const slices = Array.from({ length: q.n }, (_, i) => i < q.m)
+
+  return (
+    <div className="space-y-4 p-4">
+      <div className="flex justify-between items-center">
+        <div className="font-black text-xl">⭐ {score}/{TOTAL}</div>
+        <div className={`font-black text-xl ${timerColor}`}>⏱ {timeLeft}s</div>
+      </div>
+      <div className={`card border-2 text-center py-6 transition-all ${
+        feedback === 'correct' ? 'border-green-400 bg-green-50' :
+        feedback === 'wrong' ? 'border-red-400 bg-red-50' : 'border-magic-200'
+      }`}>
+        <p className="font-bold text-gray-600 mb-3">¿Qué fracción está sombreada?</p>
+        {/* Visual fraction representation */}
+        <div className="flex gap-2 justify-center flex-wrap mb-2">
+          {slices.map((shaded, i) => (
+            <div
+              key={i}
+              className={`w-10 h-10 rounded-lg border-2 ${shaded ? 'bg-magic-500 border-magic-600' : 'bg-gray-100 border-gray-300'}`}
+            />
+          ))}
+        </div>
+        <p className="text-sm text-gray-400 font-semibold">{q.m} de {q.n} partes sombreadas</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {opts.map((opt, i) => (
+          <button
+            key={i}
+            onClick={() => handleAnswer(opt)}
+            disabled={!!feedback}
+            className={`option-btn text-center text-2xl font-black py-5 ${
+              feedback && opt === q.fraction ? 'option-btn-correct' :
+              feedback === 'wrong' ? 'opacity-50' : ''
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Game 5: Ecuación Resuelta ─────────────────
+function EcuacionResuelta({ onExit }) {
+  const TOTAL = 10
+  const [started, setStarted] = useState(false)
+  const [qIndex, setQIndex] = useState(0)
+  const [score, setScore] = useState(0)
+  const [finished, setFinished] = useState(false)
+  const [inputVal, setInputVal] = useState('')
+  const [feedback, setFeedback] = useState(null) // 'correct' | 'wrong'
+  const inputRef = useRef()
+  const { saveAttempt } = useProgress()
+
+  function generateEquation() {
+    const x = Math.floor(Math.random() * 15) + 1
+    const type = Math.floor(Math.random() * 3)
+    if (type === 0) {
+      const a = Math.floor(Math.random() * 15) + 1
+      return { text: `x + ${a} = ${x + a}`, answer: x }
+    } else if (type === 1) {
+      const a = Math.floor(Math.random() * 10) + 1
+      return { text: `x - ${a} = ${x}`, answer: x + a }
+    } else {
+      const a = Math.floor(Math.random() * 8) + 2
+      return { text: `${a} × x = ${a * x}`, answer: x }
+    }
+  }
+
+  const [questions] = useState(() => Array.from({ length: TOTAL }, generateEquation))
+  const q = questions[qIndex] || questions[0]
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (feedback || !inputVal.trim()) return
+    const userAns = parseInt(inputVal)
+    const correct = userAns === q.answer
+    saveAttempt('game-ecuacion', correct, correct ? 10 : 0)
+    setFeedback(correct ? 'correct' : 'wrong')
+    if (correct) setScore(s => s + 1)
+    setTimeout(() => {
+      setFeedback(null)
+      setInputVal('')
+      if (qIndex + 1 < TOTAL) setQIndex(i => i + 1)
+      else setFinished(true)
+      inputRef.current?.focus()
+    }, 1200)
+  }
+
+  if (!started) {
+    return (
+      <div className="text-center space-y-4 p-4">
+        <div className="text-6xl">⚖️</div>
+        <h2 className="text-2xl font-black">Ecuación Resuelta</h2>
+        <p className="text-gray-600 font-semibold">Encuentra el valor de x — {TOTAL} ecuaciones</p>
+        <button onClick={() => { setStarted(true); setTimeout(() => inputRef.current?.focus(), 100) }} className="btn-primary w-full text-lg">¡Resolver! ✏️</button>
+        <button onClick={onExit} className="btn-ghost w-full">Volver</button>
+      </div>
+    )
+  }
+
+  if (finished) {
+    return (
+      <div className="text-center space-y-4 p-4">
+        <div className="text-6xl">{score >= 8 ? '🌟' : score >= 5 ? '😊' : '💪'}</div>
+        <h2 className="text-2xl font-black">{score}/{TOTAL} correctas</h2>
+        <p className="text-gray-500 font-semibold">{score >= 8 ? '¡Algebrista! 🎉' : score >= 5 ? '¡Bien!' : '¡Practica más!'}</p>
+        <button onClick={() => { setQIndex(0); setScore(0); setFinished(false); setStarted(false); setInputVal('') }} className="btn-primary w-full">Jugar de nuevo</button>
+        <button onClick={onExit} className="btn-ghost w-full">Volver</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4 p-4">
+      <div className="flex justify-between text-sm font-bold text-gray-500">
+        <span>Ecuación {qIndex + 1}/{TOTAL}</span>
+        <span>✅ {score}</span>
+      </div>
+      <div className="h-2 bg-gray-200 rounded-full">
+        <div className="h-full bg-magic-500 rounded-full transition-all" style={{ width: `${(qIndex / TOTAL) * 100}%` }} />
+      </div>
+      <div className={`card border-2 text-center py-8 transition-all ${
+        feedback === 'correct' ? 'border-green-400 bg-green-50' :
+        feedback === 'wrong' ? 'border-red-400 bg-red-50 animate-shake' :
+        'border-magic-200'
+      }`}>
+        {feedback ? (
+          <div>
+            <div className="text-3xl">{feedback === 'correct' ? '✅ ¡Correcto!' : `❌ Era ${q.answer}`}</div>
+            {feedback === 'wrong' && <div className="text-gray-500 text-sm mt-1">{q.text.replace('x', q.answer.toString())} ✓</div>}
+          </div>
+        ) : (
+          <div className="text-3xl font-black text-gray-800">⚖️ {q.text}</div>
+        )}
+      </div>
+      <form onSubmit={handleSubmit}>
+        <div className="text-center font-bold text-gray-500 mb-2">x = ?</div>
+        <input
+          ref={inputRef}
+          type="number"
+          value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          className="w-full text-3xl font-black text-center border-2 border-magic-300 rounded-2xl p-4 focus:outline-none focus:border-magic-500"
+          placeholder="?"
+          autoComplete="off"
+          disabled={!!feedback}
+        />
+        <button type="submit" className="btn-primary w-full mt-3 text-lg" disabled={!!feedback || !inputVal.trim()}>
+          Confirmar ✓
+        </button>
+      </form>
+    </div>
+  )
+}
+
 // ─── Hub ───────────────────────────────────────
 export default function GamesHub() {
   const [activeGame, setActiveGame] = useState(null)
@@ -340,12 +583,16 @@ export default function GamesHub() {
     { id: 'race', title: 'Carrera de Números', icon: '🏎️', desc: '¡Responde operaciones lo más rápido que puedas en 60 segundos!', color: 'from-red-400 to-orange-400' },
     { id: 'tf', title: '¿Verdadero o Falso?', icon: '✅', desc: '¿Es correcta la operación? ¡10 preguntas a toda velocidad!', color: 'from-green-400 to-teal-400' },
     { id: 'sort', title: 'Ordena los Números', icon: '🔢', desc: 'Ordena 5 números de menor a mayor o al revés', color: 'from-blue-400 to-indigo-400' },
+    { id: 'fracciones', title: 'Fracciones Visuales', icon: '🍰', desc: 'Identifica la fracción de un pastel dividido en partes — 10 preguntas, 60 segundos', color: 'from-pink-400 to-rose-400' },
+    { id: 'ecuacion', title: 'Ecuación Resuelta', icon: '⚖️', desc: 'Encuentra el valor de x en ecuaciones simples — 10 ecuaciones', color: 'from-violet-400 to-purple-400' },
   ]
 
   function renderGame() {
     if (activeGame === 'race') return <NumberRace onExit={() => setActiveGame(null)} />
     if (activeGame === 'tf') return <TrueFalse onExit={() => setActiveGame(null)} />
     if (activeGame === 'sort') return <SortNumbers onExit={() => setActiveGame(null)} />
+    if (activeGame === 'fracciones') return <FraccionesVisuales onExit={() => setActiveGame(null)} />
+    if (activeGame === 'ecuacion') return <EcuacionResuelta onExit={() => setActiveGame(null)} />
   }
 
   return (

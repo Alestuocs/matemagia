@@ -15,6 +15,17 @@ const ASSESSMENT_QUESTIONS = [
   { question: '¿Cuánto es el 25% de 80?', answer: 20, grade: 6 },
 ]
 
+const GRADE_EMOJIS = ['🌱', '🌿', '🌳', '🦋', '🚀', '🌟']
+
+const GRADE_DESCRIPTIONS = [
+  'Números, sumas y restas básicas',
+  'Sumas y restas con dos dígitos',
+  'Multiplicación y división',
+  'Números grandes y fracciones simples',
+  'Fracciones, decimales y porcentajes',
+  'Ecuaciones y matemáticas avanzadas',
+]
+
 function makeOpts(correct) {
   const opts = new Set([correct])
   while (opts.size < 4) {
@@ -28,8 +39,9 @@ export default function AssessmentPage() {
   const navigate = useNavigate()
   const { setProfile } = useProgress()
 
-  const [step, setStep] = useState('name') // name | grade | questions | results
+  const [step, setStep] = useState('name') // name | parent | grade | confirm | questions | results
   const [name, setName] = useState('')
+  const [parentEmail, setParentEmail] = useState('')
   const [grade, setGrade] = useState(null)
   const [qIndex, setQIndex] = useState(0)
   const [answers, setAnswers] = useState([])
@@ -73,29 +85,31 @@ export default function AssessmentPage() {
       }
     }
 
-    setProfile(name || 'Estudiante', grade || recommended)
+    setProfile(name || 'Estudiante', grade || recommended, parentEmail)
     navigate('/map')
   }
 
+  // ── Step: Name ──────────────────────────────────
   if (step === 'name') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-6 animate-slide-up">
           <div className="text-center">
-            <div className="text-6xl mb-3">👋</div>
-            <h1 className="text-2xl font-black text-magic-700">¿Cómo te llamas?</h1>
-            <p className="text-gray-500 font-semibold mt-1">Así podré llamarte mientras aprendemos</p>
+            <div className="text-7xl mb-4 animate-float">👋</div>
+            <h1 className="text-3xl font-black text-magic-700">¡Bienvenido a MateMagia!</h1>
+            <p className="text-gray-500 font-semibold mt-2">¿Cómo te llamas?</p>
           </div>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && name.trim() && setStep('parent')}
             placeholder="Tu nombre..."
-            className="w-full text-2xl font-black text-center border-2 border-magic-300 rounded-2xl p-4 focus:outline-none focus:border-magic-500"
+            className="w-full text-2xl font-black text-center border-2 border-magic-300 rounded-2xl p-4 focus:outline-none focus:border-magic-500 bg-white"
             autoFocus
           />
           <button
-            onClick={() => name.trim() && setStep('grade')}
+            onClick={() => name.trim() && setStep('parent')}
             disabled={!name.trim()}
             className="btn-primary w-full text-lg disabled:opacity-50"
           >
@@ -106,11 +120,46 @@ export default function AssessmentPage() {
     )
   }
 
+  // ── Step: Parent email ──────────────────────────
+  if (step === 'parent') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6 animate-slide-up">
+          <div className="text-center">
+            <div className="text-6xl mb-3">📧</div>
+            <h1 className="text-2xl font-black text-magic-700">Email del papá/mamá</h1>
+            <p className="text-gray-500 font-semibold mt-1">Para enviarte reportes de progreso</p>
+            <p className="text-xs text-gray-400 mt-1">(opcional — puedes dejarlo en blanco)</p>
+          </div>
+          <input
+            type="email"
+            value={parentEmail}
+            onChange={e => setParentEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && setStep('grade')}
+            placeholder="correo@ejemplo.com"
+            className="w-full text-lg font-semibold text-center border-2 border-magic-300 rounded-2xl p-4 focus:outline-none focus:border-magic-500 bg-white"
+            autoFocus
+          />
+          <button
+            onClick={() => setStep('grade')}
+            className="btn-primary w-full text-lg"
+          >
+            {parentEmail.trim() ? '¡Guardado! ✅' : 'Saltar por ahora →'}
+          </button>
+          <button onClick={() => setStep('name')} className="btn-ghost w-full text-sm">
+            ← Volver
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step: Grade ─────────────────────────────────
   if (step === 'grade') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-4 animate-slide-up">
-          <div className="text-center mb-6">
+          <div className="text-center mb-4">
             <div className="text-5xl mb-2">📚</div>
             <h1 className="text-2xl font-black text-magic-700">¿En qué curso estás?</h1>
             <p className="text-gray-500 font-semibold">{name}, ¡elige tu grado!</p>
@@ -119,27 +168,69 @@ export default function AssessmentPage() {
             {[1, 2, 3, 4, 5, 6].map(g => (
               <button
                 key={g}
-                onClick={() => { setGrade(g); setStep('questions') }}
-                className={`py-5 rounded-2xl font-black text-xl border-2 transition-all active:scale-95 ${
+                onClick={() => { setGrade(g); setStep('confirm') }}
+                className={`py-5 px-3 rounded-2xl font-black border-2 transition-all active:scale-95 text-left ${
                   grade === g
                     ? 'bg-magic-500 text-white border-magic-500'
-                    : 'bg-white border-magic-200 text-magic-700 hover:bg-magic-50'
+                    : 'bg-white border-magic-200 text-magic-700 hover:bg-magic-50 hover:border-magic-400'
                 }`}
               >
-                <div className="text-3xl">{'🌱🌿🌳🦋🚀🌟'[g - 1]}</div>
-                <div className="mt-1">{g}ro Básico</div>
+                <div className="text-4xl text-center">{GRADE_EMOJIS[g - 1]}</div>
+                <div className="mt-2 text-center text-base">{g}ro Básico</div>
+                <div className={`text-xs mt-1 text-center font-semibold ${grade === g ? 'text-purple-100' : 'text-gray-400'}`}>
+                  {GRADE_DESCRIPTIONS[g - 1]}
+                </div>
               </button>
             ))}
           </div>
+          <button onClick={() => setStep('parent')} className="btn-ghost w-full text-sm">
+            ← Volver
+          </button>
         </div>
       </div>
     )
   }
 
+  // ── Step: Confirm grade before questions ─────────
+  if (step === 'confirm') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6 animate-pop text-center">
+          <div className="text-8xl">{GRADE_EMOJIS[grade - 1]}</div>
+          <div>
+            <h1 className="text-3xl font-black text-magic-700">{grade}ro Básico</h1>
+            <p className="text-gray-500 font-semibold mt-2">{GRADE_DESCRIPTIONS[grade - 1]}</p>
+          </div>
+          <div className="card bg-yellow-50 border-yellow-200">
+            <p className="font-bold text-yellow-700 text-sm">
+              💡 Ahora haremos una pequeña evaluación para personalizar tu aprendizaje. ¡Sin presión, es solo para conocerte mejor!
+            </p>
+          </div>
+          <button onClick={() => setStep('questions')} className="btn-primary w-full text-lg">
+            ¡Hacer evaluación! 🚀
+          </button>
+          <button
+            onClick={() => {
+              setProfile(name || 'Estudiante', grade, parentEmail)
+              navigate('/map')
+            }}
+            className="btn-ghost w-full text-sm"
+          >
+            Saltar evaluación e ir al mapa →
+          </button>
+          <button onClick={() => setStep('grade')} className="text-sm text-gray-400 font-semibold">
+            ← Cambiar grado
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step: Questions ─────────────────────────────
   if (step === 'questions') {
     const q = questions[qIndex]
     const opts = makeOpts(q.answer)
-    const progress = ((qIndex) / questions.length) * 100
+    const progressPct = (qIndex / questions.length) * 100
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 p-4 flex flex-col">
@@ -153,12 +244,13 @@ export default function AssessmentPage() {
             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-magic-500 to-primary-500 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${progressPct}%` }}
               />
             </div>
           </div>
 
           <div className="card border-2 border-magic-200 text-center animate-pop">
+            <div className="text-xs font-bold text-magic-400 mb-1">Nivel {q.grade}ro básico</div>
             <div className="text-2xl font-black text-gray-800 py-4">{q.question}</div>
           </div>
 
@@ -184,22 +276,51 @@ export default function AssessmentPage() {
     )
   }
 
+  // ── Step: Results ───────────────────────────────
   if (step === 'results') {
     const correct = answers.filter(a => a.correct).length
     const pct = Math.round((correct / answers.length) * 100)
     const emoji = pct >= 80 ? '🌟' : pct >= 50 ? '😊' : '💪'
 
+    const correctByGrade = {}
+    answers.forEach(a => {
+      if (!correctByGrade[a.grade]) correctByGrade[a.grade] = { correct: 0, total: 0 }
+      correctByGrade[a.grade].total++
+      if (a.correct) correctByGrade[a.grade].correct++
+    })
+    let recommended = 1
+    for (let g = 1; g <= 6; g++) {
+      const data = correctByGrade[g]
+      if (data && data.correct / data.total >= 0.5) recommended = g
+    }
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 p-4 flex flex-col items-center justify-center">
         <div className="max-w-sm w-full space-y-5 animate-pop">
           <div className="card text-center border-2 border-magic-200">
-            <div className="text-6xl mb-3">{emoji}</div>
-            <h2 className="text-2xl font-black text-magic-700 mb-1">¡Evaluación completa, {name}!</h2>
-            <div className="text-4xl font-black text-primary-500 my-3">{correct}/{answers.length}</div>
+            <div className="text-7xl mb-3">{emoji}</div>
+            <h2 className="text-2xl font-black text-magic-700 mb-1">¡Evaluación completa!</h2>
+            <h3 className="text-lg font-bold text-gray-600 mb-3">¡Muy bien, {name}!</h3>
+            <div className="text-5xl font-black text-primary-500 my-3">{correct}/{answers.length}</div>
             <p className="text-gray-500 font-semibold">{pct}% de respuestas correctas</p>
           </div>
 
+          <div className="card bg-purple-50 border-magic-200 text-center">
+            <p className="text-sm font-bold text-magic-600">
+              Según tu evaluación, empezaremos con contenidos de
+            </p>
+            <div className="text-2xl font-black text-magic-700 mt-1">
+              {GRADE_EMOJIS[recommended - 1]} {recommended}ro Básico
+            </div>
+            {recommended !== grade && (
+              <p className="text-xs text-gray-400 mt-1">
+                (seleccionaste {grade}ro, pero tu evaluación sugiere {recommended}ro)
+              </p>
+            )}
+          </div>
+
           <div className="card space-y-2">
+            <h3 className="font-black text-gray-700 mb-2">Tus respuestas:</h3>
             {answers.map((a, i) => (
               <div key={i} className={`flex items-center gap-3 p-2 rounded-xl ${a.correct ? 'bg-green-50' : 'bg-red-50'}`}>
                 <span className="text-xl">{a.correct ? '✅' : '❌'}</span>
