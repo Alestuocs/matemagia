@@ -23,6 +23,7 @@ const DEFAULT_PROGRESS = {
   parentEmail: '',
   assessmentDone: false,
   lastDate: null,
+  role: 'student',
 }
 
 function loadLocal() {
@@ -78,6 +79,7 @@ export function ProgressProvider({ children }) {
           studentName: data.student_name || '',
           parentEmail: data.parent_email || '',
           assessmentDone: data.assessment_done || false,
+          role: data.role || 'student',
         }
         setProgress(remote)
         saveLocal(remote)
@@ -101,6 +103,7 @@ export function ProgressProvider({ children }) {
           student_name: local.studentName,
           parent_email: local.parentEmail,
           assessment_done: local.assessmentDone,
+          role: local.role || 'student',
         })
       }
     } catch (e) {
@@ -133,6 +136,7 @@ export function ProgressProvider({ children }) {
         student_name: newProgress.studentName,
         parent_email: newProgress.parentEmail,
         assessment_done: newProgress.assessmentDone,
+        role: newProgress.role || 'student',
         updated_at: new Date().toISOString(),
       })
     } catch (e) {
@@ -223,11 +227,24 @@ export function ProgressProvider({ children }) {
     return earned
   }
 
-  function setProfile(name, grade, parentEmail = '') {
-    const updated = { ...progress, studentName: name, currentGrade: grade, parentEmail, assessmentDone: true }
-    // Unlock ALL topics up to and including the student's grade level
-    const allTopicsUpToGrade = CURRICULUM.filter(t => t.gradeLevel <= grade).map(t => t.id)
-    updated.unlockedTopics = [...new Set([...progress.unlockedTopics, ...allTopicsUpToGrade])]
+  // setProfile now accepts role and parentEmail
+  function setProfile(name, grade, role = 'student', parentEmail = '') {
+    const updated = {
+      ...progress,
+      studentName: name,
+      currentGrade: grade,
+      parentEmail,
+      assessmentDone: true,
+      role,
+    }
+    if (role === 'parent') {
+      // Parents don't need topic unlocks
+      updated.assessmentDone = true
+    } else {
+      // Unlock ALL topics up to and including the student's grade level
+      const allTopicsUpToGrade = CURRICULUM.filter(t => t.gradeLevel <= grade).map(t => t.id)
+      updated.unlockedTopics = [...new Set([...progress.unlockedTopics, ...allTopicsUpToGrade])]
+    }
     persistProgress(updated)
   }
 
@@ -235,8 +252,29 @@ export function ProgressProvider({ children }) {
     persistProgress({ ...progress, dailyGoal: goal })
   }
 
-  function resetProgress() {
-    persistProgress({ ...DEFAULT_PROGRESS })
+  // Save exercise hash to localStorage to prevent repeats
+  function saveExerciseHash(topicId, hash) {
+    try {
+      const key = `mm_ex_${topicId}`
+      const existing = JSON.parse(localStorage.getItem(key) || '[]')
+      if (!existing.includes(hash)) {
+        existing.push(hash)
+        // Keep last 200 per topic to avoid unbounded growth
+        if (existing.length > 200) existing.splice(0, existing.length - 200)
+        localStorage.setItem(key, JSON.stringify(existing))
+      }
+    } catch (_) {}
+  }
+
+  // Check if an exercise has been seen before
+  function wasExerciseSeen(topicId, hash) {
+    try {
+      const key = `mm_ex_${topicId}`
+      const existing = JSON.parse(localStorage.getItem(key) || '[]')
+      return existing.includes(hash)
+    } catch (_) {
+      return false
+    }
   }
 
   const value = {
@@ -246,8 +284,9 @@ export function ProgressProvider({ children }) {
     completeTopic,
     setProfile,
     setDailyGoal,
-    resetProgress,
     persistProgress,
+    saveExerciseHash,
+    wasExerciseSeen,
   }
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>

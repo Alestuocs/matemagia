@@ -39,7 +39,9 @@ export default function AssessmentPage() {
   const navigate = useNavigate()
   const { setProfile } = useProgress()
 
-  const [step, setStep] = useState('name') // name | parent | grade | confirm | questions | results
+  // Steps: role | name | parent_email | grade | confirm | questions | results | parent_setup
+  const [step, setStep] = useState('role')
+  const [role, setRole] = useState('student')
   const [name, setName] = useState('')
   const [parentEmail, setParentEmail] = useState('')
   const [grade, setGrade] = useState(null)
@@ -47,6 +49,7 @@ export default function AssessmentPage() {
   const [answers, setAnswers] = useState([])
   const [selectedOpt, setSelectedOpt] = useState(null)
   const [showResult, setShowResult] = useState(false)
+  const [inviteCode] = useState(Math.random().toString(36).substring(2, 10).toUpperCase())
 
   const questions = ASSESSMENT_QUESTIONS.filter(q => q.grade <= (grade || 6))
 
@@ -85,43 +88,108 @@ export default function AssessmentPage() {
       }
     }
 
-    setProfile(name || 'Estudiante', grade || recommended, parentEmail)
+    setProfile(name || 'Estudiante', grade || recommended, 'student', parentEmail)
     navigate('/map')
   }
 
-  // ── Step: Name ──────────────────────────────────
-  if (step === 'name') {
+  function handleParentFinish() {
+    setProfile(name || 'Apoderado', 1, 'parent', '')
+    navigate('/')
+  }
+
+  // ── Step: Role ──────────────────────────────────
+  if (step === 'role') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-sm space-y-6 animate-slide-up">
-          <div className="text-center">
-            <div className="text-7xl mb-4 animate-float">👋</div>
-            <h1 className="text-3xl font-black text-magic-700">¡Bienvenido a MateMagia!</h1>
-            <p className="text-gray-500 font-semibold mt-2">¿Cómo te llamas?</p>
+        <div className="w-full max-w-sm space-y-4">
+          <div className="text-center mb-6">
+            <img src="/matemagia/logo.png" alt="MateMagia" className="w-24 h-24 mx-auto mb-2 object-contain" />
+            <h1 className="text-2xl font-black text-magic-700">¡Bienvenido/a!</h1>
+            <p className="text-gray-500 font-semibold">¿Quién eres?</p>
           </div>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && name.trim() && setStep('parent')}
-            placeholder="Tu nombre..."
-            className="w-full text-2xl font-black text-center border-2 border-magic-300 rounded-2xl p-4 focus:outline-none focus:border-magic-500 bg-white"
-            autoFocus
-          />
-          <button
-            onClick={() => name.trim() && setStep('parent')}
-            disabled={!name.trim()}
-            className="btn-primary w-full text-lg disabled:opacity-50"
-          >
-            ¡Hola, {name || '...'}! 🎉
+
+          <button onClick={() => { setRole('student'); setStep('name') }}
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-3xl p-5 text-left shadow-lg active:scale-95 transition-all">
+            <div className="text-3xl mb-1">🎓</div>
+            <div className="font-black text-xl">Soy Estudiante</div>
+            <div className="text-purple-200 text-sm">Quiero aprender matemáticas</div>
+          </button>
+
+          <button onClick={() => { setRole('parent'); setStep('name') }}
+            className="w-full bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-3xl p-5 text-left shadow-lg active:scale-95 transition-all">
+            <div className="text-3xl mb-1">👨‍👩‍👧</div>
+            <div className="font-black text-xl">Soy Apoderado</div>
+            <div className="text-green-200 text-sm">Quiero ver el progreso de mi hijo/a</div>
           </button>
         </div>
       </div>
     )
   }
 
-  // ── Step: Parent email ──────────────────────────
-  if (step === 'parent') {
+  // ── Step: Name ──────────────────────────────────
+  if (step === 'name') {
+    const nextStep = role === 'parent' ? 'parent_setup' : 'parent_email'
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6 animate-slide-up">
+          <div className="text-center">
+            <div className="text-7xl mb-4 animate-float">👋</div>
+            <h1 className="text-3xl font-black text-magic-700">
+              {role === 'parent' ? '¡Bienvenido/a!' : '¡Bienvenido a MateMagia!'}
+            </h1>
+            <p className="text-gray-500 font-semibold mt-2">¿Cómo te llamas?</p>
+          </div>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && name.trim() && setStep(nextStep)}
+            placeholder="Tu nombre..."
+            className="w-full text-2xl font-black text-center border-2 border-magic-300 rounded-2xl p-4 focus:outline-none focus:border-magic-500 bg-white"
+            autoFocus
+          />
+          <button
+            onClick={() => name.trim() && setStep(nextStep)}
+            disabled={!name.trim()}
+            className="btn-primary w-full text-lg disabled:opacity-50"
+          >
+            ¡Hola, {name || '...'}! 🎉
+          </button>
+          <button onClick={() => setStep('role')} className="btn-ghost w-full text-sm">
+            ← Volver
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step: Parent setup (for role=parent) ────────
+  if (step === 'parent_setup') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-teal-50 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6 animate-slide-up text-center">
+          <div className="text-7xl">👨‍👩‍👧</div>
+          <div>
+            <h1 className="text-2xl font-black text-gray-800">¡Perfil de Apoderado listo!</h1>
+            <p className="text-gray-500 font-semibold mt-1">Hola, {name}. Aquí está tu código de invitación:</p>
+          </div>
+          <div className="bg-white rounded-3xl p-6 shadow-md border border-green-200">
+            <p className="text-sm text-gray-500 mb-3">Comparte este código con tu hijo/a para vincular sus cuentas:</p>
+            <div className="text-3xl font-black tracking-widest text-green-700 font-mono bg-green-50 rounded-2xl py-4 px-6 mb-2">
+              {inviteCode}
+            </div>
+            <p className="text-xs text-gray-400">El estudiante puede ingresar este código en su perfil</p>
+          </div>
+          <button onClick={handleParentFinish} className="btn-primary w-full text-lg">
+            Ir a mi panel 🏠
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Step: Parent email (for students) ──────────
+  if (step === 'parent_email') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-6 animate-slide-up">
@@ -183,7 +251,7 @@ export default function AssessmentPage() {
               </button>
             ))}
           </div>
-          <button onClick={() => setStep('parent')} className="btn-ghost w-full text-sm">
+          <button onClick={() => setStep('parent_email')} className="btn-ghost w-full text-sm">
             ← Volver
           </button>
         </div>
@@ -211,7 +279,7 @@ export default function AssessmentPage() {
           </button>
           <button
             onClick={() => {
-              setProfile(name || 'Estudiante', grade, parentEmail)
+              setProfile(name || 'Estudiante', grade, 'student', parentEmail)
               navigate('/map')
             }}
             className="btn-ghost w-full text-sm"

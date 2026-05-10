@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProgress } from '../contexts/ProgressContext'
 import { getLevelInfo, GRADE_LABELS, CURRICULUM } from '../lib/curriculum'
+import { supabase } from '../lib/supabase'
 import TopBar from '../components/layout/TopBar'
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth()
-  const { progress, setDailyGoal, resetProgress } = useProgress()
+  const { progress, setDailyGoal } = useProgress()
   const [showGoalPicker, setShowGoalPicker] = useState(false)
-  const [confirmReset, setConfirmReset] = useState(false)
+  const [inviteCode, setInviteCode] = useState('')
+  const [linkStatus, setLinkStatus] = useState(null) // null | 'success' | 'error' | 'loading'
+  const [linkMessage, setLinkMessage] = useState('')
 
   const { current, next, progress: levelProgress } = getLevelInfo(progress.xp)
   const name = progress.studentName || user?.user_metadata?.full_name || 'Estudiante'
@@ -18,6 +21,46 @@ export default function ProfilePage() {
 
   async function handleSignOut() {
     try { await signOut() } catch (e) { console.error(e) }
+  }
+
+  async function handleLinkInvite() {
+    const code = inviteCode.trim().toUpperCase()
+    if (!code) return
+    setLinkStatus('loading')
+    try {
+      // Find the invite link by code
+      const { data: link, error } = await supabase
+        .from('parent_student_links')
+        .select('id, status')
+        .eq('invite_code', code)
+        .eq('status', 'pending')
+        .single()
+
+      if (error || !link) {
+        setLinkStatus('error')
+        setLinkMessage('Código no encontrado o ya usado.')
+        return
+      }
+
+      // Update link: set student_id and mark as accepted
+      const { error: updateError } = await supabase
+        .from('parent_student_links')
+        .update({ student_id: user.id, status: 'accepted' })
+        .eq('id', link.id)
+
+      if (updateError) {
+        setLinkStatus('error')
+        setLinkMessage('No se pudo vincular. Inténtalo de nuevo.')
+        return
+      }
+
+      setLinkStatus('success')
+      setLinkMessage('¡Cuenta vinculada con tu apoderado! 🎉')
+      setInviteCode('')
+    } catch (e) {
+      setLinkStatus('error')
+      setLinkMessage('Error al vincular. Inténtalo de nuevo.')
+    }
   }
 
   return (
@@ -142,20 +185,34 @@ export default function ProfilePage() {
           })}
         </div>
 
-        {/* Actions */}
-        {confirmReset ? (
-          <div className="card border-2 border-red-200 bg-red-50 text-center space-y-3">
-            <p className="font-black text-red-600">¿Seguro que quieres reiniciar todo tu progreso?</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmReset(false)} className="btn-ghost flex-1">Cancelar</button>
-              <button onClick={() => { resetProgress(); setConfirmReset(false) }} className="flex-1 bg-red-500 text-white rounded-2xl font-bold py-3 active:scale-95">Reiniciar</button>
-            </div>
+        {/* Link to parent */}
+        <div className="card">
+          <h3 className="font-black text-gray-700 mb-1">👨‍👩‍👧 Código de tu apoderado</h3>
+          <p className="text-gray-400 text-sm mb-3">Ingresa el código que te dio tu apoderado para vincular las cuentas</p>
+          <div className="flex gap-2">
+            <input
+              value={inviteCode}
+              onChange={e => setInviteCode(e.target.value.toUpperCase())}
+              onKeyDown={e => e.key === 'Enter' && handleLinkInvite()}
+              placeholder="Ej: AB12CD34"
+              maxLength={8}
+              className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-base font-black text-center tracking-widest focus:outline-none focus:border-magic-400 font-mono uppercase"
+            />
+            <button
+              onClick={handleLinkInvite}
+              disabled={!inviteCode.trim() || linkStatus === 'loading'}
+              className="bg-magic-500 text-white rounded-xl px-4 font-bold text-sm disabled:opacity-50 active:scale-95"
+            >
+              {linkStatus === 'loading' ? '...' : 'Vincular'}
+            </button>
           </div>
-        ) : (
-          <button onClick={() => setConfirmReset(true)} className="text-sm text-gray-400 hover:text-red-400 font-semibold w-full text-center">
-            🔄 Reiniciar progreso
-          </button>
-        )}
+          {linkStatus === 'success' && (
+            <p className="mt-2 text-green-600 text-sm font-semibold">{linkMessage}</p>
+          )}
+          {linkStatus === 'error' && (
+            <p className="mt-2 text-red-500 text-sm font-semibold">{linkMessage}</p>
+          )}
+        </div>
 
         <button onClick={handleSignOut} className="btn-ghost w-full text-red-500 border-red-200">
           Cerrar sesión 👋
