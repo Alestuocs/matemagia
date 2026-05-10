@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProgress } from '../contexts/ProgressContext'
-import { CURRICULUM, getLevelInfo, ACHIEVEMENTS } from '../lib/curriculum'
+import { CURRICULUM, getLevelInfo, ACHIEVEMENTS, gradeLabel } from '../lib/curriculum'
 import XPBar from '../components/ui/XPBar'
 import StreakBadge from '../components/ui/StreakBadge'
 
@@ -23,7 +23,7 @@ function getMotivation(progress) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { progress } = useProgress()
+  const { progress, refreshProgress } = useProgress()
 
   const name = progress.studentName || user?.user_metadata?.full_name?.split(' ')[0] || 'Campeón'
   const avatar = user?.user_metadata?.avatar_url
@@ -51,17 +51,27 @@ export default function Dashboard() {
       <div className="flex items-center justify-between py-3">
         <div>
           <h1 className="text-2xl font-black text-gray-800">
-            {getGreeting()}, {name}! 👋
+            {progress.exercisesTotal > 0 ? '¡Hola de nuevo' : '¡Bienvenido'}, {name}! 👋
           </h1>
-          <p className="text-gray-500 font-semibold text-sm">{getMotivation(progress)}</p>
-        </div>
-        {avatar ? (
-          <img src={avatar} alt={name} className="w-12 h-12 rounded-full border-2 border-magic-300" />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-magic-100 flex items-center justify-center text-2xl border-2 border-magic-300">
-            {name[0]?.toUpperCase() || '🧒'}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="bg-purple-100 text-purple-700 font-bold text-xs px-2 py-0.5 rounded-full">
+              {gradeLabel(progress.currentGrade)} Básico
+            </span>
           </div>
-        )}
+          <p className="text-gray-500 font-semibold text-sm mt-1">{getMotivation(progress)}</p>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <button onClick={refreshProgress} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base active:scale-90 transition-transform" title="Actualizar">
+            🔄
+          </button>
+          {avatar ? (
+            <img src={avatar} alt={name} className="w-10 h-10 rounded-full border-2 border-magic-300" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-magic-100 flex items-center justify-center text-xl border-2 border-magic-300">
+              {name[0]?.toUpperCase() || '🧒'}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Level & XP */}

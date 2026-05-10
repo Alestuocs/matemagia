@@ -1599,6 +1599,12 @@ export const GRADE_LABELS = {
   6: '6to Básico',
 }
 
+// Returns the correct Spanish ordinal label for a grade number (1–6)
+export function gradeLabel(g) {
+  const labels = ['1ro', '2do', '3ro', '4to', '5to', '6to']
+  return labels[g - 1] || `${g}to`
+}
+
 export const LEVEL_TITLES = [
   { minXP: 0, title: 'Aprendiz', icon: '🌱' },
   { minXP: 100, title: 'Explorador', icon: '🔍' },

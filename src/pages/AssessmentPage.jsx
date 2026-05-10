@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProgress } from '../contexts/ProgressContext'
+import { gradeLabel } from '../lib/curriculum'
 
 const ASSESSMENT_QUESTIONS = [
   { question: '¿Cuánto es 3 + 4?', answer: 7, grade: 1 },
@@ -88,7 +89,7 @@ export default function AssessmentPage() {
       }
     }
 
-    setProfile(name || 'Estudiante', grade || recommended, 'student', parentEmail)
+    setProfile((name || 'Estudiante').trim() || 'Estudiante', grade || recommended, 'student', parentEmail)
     navigate('/map')
   }
 
@@ -142,7 +143,7 @@ export default function AssessmentPage() {
           <input
             type="text"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={e => setName(e.target.value.slice(0, 50))}
             onKeyDown={e => e.key === 'Enter' && name.trim() && setStep(nextStep)}
             placeholder="Tu nombre..."
             className="w-full text-2xl font-black text-center border-2 border-magic-300 rounded-2xl p-4 focus:outline-none focus:border-magic-500 bg-white"
@@ -244,7 +245,7 @@ export default function AssessmentPage() {
                 }`}
               >
                 <div className="text-4xl text-center">{GRADE_EMOJIS[g - 1]}</div>
-                <div className="mt-2 text-center text-base">{g}ro Básico</div>
+                <div className="mt-2 text-center text-base">{gradeLabel(g)} Básico</div>
                 <div className={`text-xs mt-1 text-center font-semibold ${grade === g ? 'text-purple-100' : 'text-gray-400'}`}>
                   {GRADE_DESCRIPTIONS[g - 1]}
                 </div>
@@ -266,7 +267,7 @@ export default function AssessmentPage() {
         <div className="w-full max-w-sm space-y-6 animate-pop text-center">
           <div className="text-8xl">{GRADE_EMOJIS[grade - 1]}</div>
           <div>
-            <h1 className="text-3xl font-black text-magic-700">{grade}ro Básico</h1>
+            <h1 className="text-3xl font-black text-magic-700">{gradeLabel(grade)} Básico</h1>
             <p className="text-gray-500 font-semibold mt-2">{GRADE_DESCRIPTIONS[grade - 1]}</p>
           </div>
           <div className="card bg-yellow-50 border-yellow-200">
@@ -318,7 +319,7 @@ export default function AssessmentPage() {
           </div>
 
           <div className="card border-2 border-magic-200 text-center animate-pop">
-            <div className="text-xs font-bold text-magic-400 mb-1">Nivel {q.grade}ro básico</div>
+            <div className="text-xs font-bold text-magic-400 mb-1">Nivel {gradeLabel(q.grade)} básico</div>
             <div className="text-2xl font-black text-gray-800 py-4">{q.question}</div>
           </div>
 
@@ -378,11 +379,11 @@ export default function AssessmentPage() {
               Según tu evaluación, empezaremos con contenidos de
             </p>
             <div className="text-2xl font-black text-magic-700 mt-1">
-              {GRADE_EMOJIS[recommended - 1]} {recommended}ro Básico
+              {GRADE_EMOJIS[recommended - 1]} {gradeLabel(recommended)} Básico
             </div>
             {recommended !== grade && (
               <p className="text-xs text-gray-400 mt-1">
-                (seleccionaste {grade}ro, pero tu evaluación sugiere {recommended}ro)
+                (seleccionaste {gradeLabel(grade)}, pero tu evaluación sugiere {gradeLabel(recommended)})
               </p>
             )}
           </div>

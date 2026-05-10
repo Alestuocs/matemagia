@@ -43,13 +43,13 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={
           !user ? <LoginPage /> :
-          !(progress.assessmentDone && progress.studentName) ? <Navigate to="/assessment" replace /> :
+          !(progress.assessmentDone && progress.studentName) && progress.role !== 'parent' ? <Navigate to="/assessment" replace /> :
           isParent ? <ParentDashboard /> :
           <Dashboard />
         } />
         <Route path="/assessment" element={
           !user ? <Navigate to="/" replace /> :
-          (progress.assessmentDone && progress.studentName) ? <Navigate to="/" replace /> :
+          (progress.assessmentDone && progress.studentName) || progress.role === 'parent' ? <Navigate to="/" replace /> :
           <AssessmentPage />
         } />
         <Route path="/map" element={user ? <CurriculumMap /> : <Navigate to="/" replace />} />

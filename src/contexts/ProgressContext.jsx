@@ -49,7 +49,8 @@ export function ProgressProvider({ children }) {
   // Sync progress to/from Supabase when user changes
   useEffect(() => {
     if (!user) {
-      // Clear stale local cache on logout so it doesn't bleed into next session
+      // Reset to defaults and clear stale local cache on logout
+      setProgress({ ...DEFAULT_PROGRESS })
       localStorage.removeItem('mm_progress')
       setSynced(true)
       return
@@ -260,6 +261,11 @@ export function ProgressProvider({ children }) {
     persistProgress({ ...progress, dailyGoal: goal })
   }
 
+  async function refreshProgress() {
+    if (!user) return
+    await loadFromSupabase()
+  }
+
   // Save exercise hash to localStorage to prevent repeats
   function saveExerciseHash(topicId, hash) {
     try {
@@ -296,6 +302,7 @@ export function ProgressProvider({ children }) {
     persistProgress,
     saveExerciseHash,
     wasExerciseSeen,
+    refreshProgress,
   }
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>

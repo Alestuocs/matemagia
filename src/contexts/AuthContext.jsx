@@ -48,12 +48,42 @@ export function AuthProvider({ children }) {
     }
   }
 
+  function sanitizeEmail(email) {
+    return email.trim().toLowerCase().slice(0, 254)
+  }
+
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/matemagia/',
       },
+    })
+    if (error) throw error
+  }
+
+  async function signInWithEmail(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: sanitizeEmail(email),
+      password,
+    })
+    if (error) throw error
+    return data
+  }
+
+  async function signUpWithEmail(email, password, fullName) {
+    const { data, error } = await supabase.auth.signUp({
+      email: sanitizeEmail(email),
+      password,
+      options: { data: { full_name: fullName } },
+    })
+    if (error) throw error
+    return data
+  }
+
+  async function resetPassword(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(sanitizeEmail(email), {
+      redirectTo: window.location.origin + '/matemagia/',
     })
     if (error) throw error
   }
@@ -66,7 +96,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('mm_profile')
   }
 
-  const value = { user, session, loading, signInWithGoogle, signOut }
+  const value = { user, session, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signOut }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
