@@ -1,18 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProgress } from '../contexts/ProgressContext'
 import { getLevelInfo, GRADE_LABELS, CURRICULUM } from '../lib/curriculum'
-import { supabase } from '../lib/supabase'
 import TopBar from '../components/layout/TopBar'
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth()
-  const { progress, setDailyGoal } = useProgress()
+  const { progress, setDailyGoal, inviteCode } = useProgress()
   const [showGoalPicker, setShowGoalPicker] = useState(false)
-  const [inviteCode, setInviteCode] = useState('')
-  const [linkStatus, setLinkStatus] = useState(null) // null | 'success' | 'error' | 'loading'
-  const [linkMessage, setLinkMessage] = useState('')
-  const [linkedParents, setLinkedParents] = useState([])
+  const [codeCopied, setCodeCopied] = useState(false)
 
   const { current, next, progress: levelProgress } = getLevelInfo(progress.xp)
   const name = progress.studentName || user?.user_metadata?.full_name || 'Estudiante'
@@ -23,62 +19,18 @@ export default function ProfilePage() {
   const isStudent = progress.role !== 'parent'
   const isParent = progress.role === 'parent'
 
-  // Load linked parents for students
-  useEffect(() => {
-    if (!user || !isStudent) return
-    async function loadLinks() {
-      const { data } = await supabase
-        .from('parent_student_links')
-        .select('id, status, invite_code, parent_id')
-        .eq('student_id', user.id)
-        .eq('status', 'accepted')
-      setLinkedParents(data || [])
-    }
-    loadLinks()
-  }, [user?.id, isStudent])
-
   async function handleSignOut() {
     try { await signOut() } catch (e) { console.error(e) }
   }
 
-  async function handleLinkInvite() {
-    const code = inviteCode.trim().toUpperCase()
+  async function handleCopyCode() {
+    const code = inviteCode || progress.inviteCode
     if (!code) return
-    setLinkStatus('loading')
     try {
-      const { data: link, error } = await supabase
-        .from('parent_student_links')
-        .select('id, status')
-        .eq('invite_code', code)
-        .eq('status', 'pending')
-        .single()
-
-      if (error || !link) {
-        setLinkStatus('error')
-        setLinkMessage('Código no encontrado o ya usado.')
-        return
-      }
-
-      const { error: updateError } = await supabase
-        .from('parent_student_links')
-        .update({ student_id: user.id, status: 'accepted' })
-        .eq('id', link.id)
-
-      if (updateError) {
-        setLinkStatus('error')
-        setLinkMessage('No se pudo vincular. Inténtalo de nuevo.')
-        return
-      }
-
-      setLinkStatus('success')
-      setLinkMessage('¡Cuenta vinculada con tu apoderado!')
-      setInviteCode('')
-      // Refresh linked parents list
-      setLinkedParents(prev => [...prev, { id: link.id, status: 'accepted' }])
-    } catch (e) {
-      setLinkStatus('error')
-      setLinkMessage('Error al vincular. Inténtalo de nuevo.')
-    }
+      await navigator.clipboard.writeText(code)
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
+    } catch (_) {}
   }
 
   return (
@@ -204,7 +156,7 @@ export default function ProfilePage() {
         {isStudent && (
           <div className="card">
             <h3 className="font-black text-gray-700 mb-3">📊 Progreso por grado</h3>
-            {[1, 2, 3, 4, 5, 6].map(g => {
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(g => {
               const topics = CURRICULUM.filter(t => t.gradeLevel === g)
               const done = topics.filter(t => progress.completedTopics.includes(t.id)).length
               const pct = Math.round((done / topics.length) * 100)
@@ -226,47 +178,33 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Link to parent (students only) */}
+        {/* Invite code for students */}
         {isStudent && (
           <div className="card border-2 border-magic-200 bg-magic-50">
-            <h3 className="font-black text-gray-800 mb-1 text-base">
-              👨‍👩‍👧 Vincularme con mi apoderado
-            </h3>
-            <p className="text-gray-500 text-sm mb-3">
-              Ingresa el código de tu apoderado para vincularte. Tu apoderado puede ver tu progreso desde su cuenta.
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">🔑</span>
+              <h3 className="font-black text-gray-800 text-base">Tu código de vinculación</h3>
+            </div>
+            <p className="text-gray-500 text-sm mb-4">
+              Comparte este código con tu apoderado para que pueda ver tu progreso.
             </p>
 
-            {linkedParents.length > 0 && (
-              <div className="mb-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                <p className="text-green-700 font-bold text-sm">
-                  Vinculado con {linkedParents.length} apoderado{linkedParents.length > 1 ? 's' : ''}
-                </p>
-                <p className="text-green-600 text-xs mt-0.5">Tu apoderado puede ver tu progreso</p>
+            {(inviteCode || progress.inviteCode) ? (
+              <div className="bg-white border-2 border-magic-300 rounded-2xl p-4 text-center">
+                <div className="text-3xl font-black tracking-widest text-magic-700 font-mono mb-3">
+                  {inviteCode || progress.inviteCode}
+                </div>
+                <button
+                  onClick={handleCopyCode}
+                  className="bg-magic-500 text-white rounded-xl px-5 py-2 font-bold text-sm active:scale-95 transition-all"
+                >
+                  {codeCopied ? '✅ Copiado' : '📋 Copiar'}
+                </button>
               </div>
-            )}
-
-            <div className="flex gap-2">
-              <input
-                value={inviteCode}
-                onChange={e => setInviteCode(e.target.value.toUpperCase())}
-                onKeyDown={e => e.key === 'Enter' && handleLinkInvite()}
-                placeholder="Ej: AB12CD34"
-                maxLength={8}
-                className="flex-1 border-2 border-magic-300 rounded-xl px-4 py-3 text-base font-black text-center tracking-widest focus:outline-none focus:border-magic-500 font-mono uppercase bg-white"
-              />
-              <button
-                onClick={handleLinkInvite}
-                disabled={!inviteCode.trim() || linkStatus === 'loading'}
-                className="bg-magic-500 text-white rounded-xl px-5 font-bold text-sm disabled:opacity-50 active:scale-95 whitespace-nowrap"
-              >
-                {linkStatus === 'loading' ? '...' : 'Vincular'}
-              </button>
-            </div>
-            {linkStatus === 'success' && (
-              <p className="mt-2 text-green-600 text-sm font-semibold">{linkMessage}</p>
-            )}
-            {linkStatus === 'error' && (
-              <p className="mt-2 text-red-500 text-sm font-semibold">{linkMessage}</p>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-2xl p-4 text-center text-gray-400 text-sm">
+                Código asignado al iniciar sesión por primera vez.
+              </div>
             )}
           </div>
         )}

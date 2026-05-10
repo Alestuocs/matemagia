@@ -2,16 +2,23 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { CURRICULUM, gradeLabel } from '../lib/curriculum'
+import { sanitize } from '../lib/utils'
 
 export default function ParentDashboard() {
   const { user, signOut } = useAuth()
   const [children, setChildren] = useState([])
   const [loading, setLoading] = useState(true)
-  const [inviteCode, setInviteCode] = useState('')
-  const [childEmail, setChildEmail] = useState('')
-  const [showInvite, setShowInvite] = useState(false)
-  const [copySuccess, setCopySuccess] = useState(false)
-  const [pendingLinks, setPendingLinks] = useState([])
+  const [showLinkForm, setShowLinkForm] = useState(false)
+
+  // New linking state
+  const [childEmailInput, setChildEmailInput] = useState('')
+  const [childCodeInput, setChildCodeInput] = useState('')
+  const [linkError, setLinkError] = useState('')
+  const [linkSuccess, setLinkSuccess] = useState('')
+  const [linking, setLinking] = useState(false)
+
+  // Password reset toast
+  const [resetToast, setResetToast] = useState('')
 
   useEffect(() => { loadChildren() }, [user])
 
@@ -19,16 +26,13 @@ export default function ParentDashboard() {
     if (!user) return
     setLoading(true)
     try {
-      // Fetch accepted links where I am the parent
       const { data: links } = await supabase
         .from('parent_student_links')
-        .select('student_id, invite_code, status')
+        .select('student_id, child_email, child_name, status')
         .eq('parent_id', user.id)
+        .eq('status', 'accepted')
 
-      const allLinks = links || []
-      const accepted = allLinks.filter(l => l.status === 'accepted')
-      const pending = allLinks.filter(l => l.status === 'pending')
-      setPendingLinks(pending)
+      const accepted = links || []
 
       if (accepted.length > 0) {
         const studentIds = accepted.map(l => l.student_id)
@@ -37,7 +41,13 @@ export default function ParentDashboard() {
           .select('*')
           .in('user_id', studentIds)
 
-        setChildren(progresses || [])
+        // Attach child_email from links to each progress row
+        const enriched = (progresses || []).map(p => {
+          const link = accepted.find(l => l.student_id === p.user_id)
+          return { ...p, child_email: link?.child_email || '' }
+        })
+
+        setChildren(enriched)
       } else {
         setChildren([])
       }
@@ -48,23 +58,94 @@ export default function ParentDashboard() {
     }
   }
 
-  async function createInvite() {
-    const { data } = await supabase
-      .from('parent_student_links')
-      .insert({ parent_id: user.id, student_email: childEmail || null })
-      .select()
-      .single()
+  async function linkChild() {
+    setLinkError('')
+    setLinkSuccess('')
+    const email = sanitize.email(childEmailInput)
+    const code = sanitize.code(childCodeInput)
 
-    if (data) {
-      setInviteCode(data.invite_code)
+    if (!email || !code) {
+      setLinkError('Completa ambos campos.')
+      return
+    }
+
+    setLinking(true)
+    try {
+      // 1. Find student by email in profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('email', email)
+        .single()
+
+      if (profileError || !profile) {
+        setLinkError('No encontramos una cuenta con ese correo.')
+        setLinking(false)
+        return
+      }
+
+      // 2. Check invite code matches
+      const { data: prog, error: progError } = await supabase
+        .from('user_progress')
+        .select('invite_code, student_name, role')
+        .eq('user_id', profile.id)
+        .single()
+
+      if (progError || !prog) {
+        setLinkError('No se pudo verificar el estudiante.')
+        setLinking(false)
+        return
+      }
+
+      if (prog.role === 'parent') {
+        setLinkError('Esa cuenta es de un apoderado, no de un estudiante.')
+        setLinking(false)
+        return
+      }
+
+      if (!prog.invite_code || prog.invite_code.toUpperCase() !== code.toUpperCase()) {
+        setLinkError('El código no coincide. Pídele a tu hijo/a que te comparta su código desde su Perfil.')
+        setLinking(false)
+        return
+      }
+
+      // 3. Create or update link
+      const { error: upsertError } = await supabase
+        .from('parent_student_links')
+        .upsert({
+          parent_id: user.id,
+          student_id: profile.id,
+          child_email: email,
+          child_name: prog.student_name || profile.full_name || 'Estudiante',
+          status: 'accepted',
+          verified_at: new Date().toISOString(),
+        }, { onConflict: 'parent_id,student_id' })
+
+      if (upsertError) {
+        setLinkError('Error al vincular: ' + upsertError.message)
+        setLinking(false)
+        return
+      }
+
+      setLinkSuccess(`¡${prog.student_name || 'Estudiante'} vinculado/a correctamente!`)
+      setChildEmailInput('')
+      setChildCodeInput('')
+      setShowLinkForm(false)
       loadChildren()
+    } catch (e) {
+      setLinkError('Error inesperado. Inténtalo de nuevo.')
+    } finally {
+      setLinking(false)
     }
   }
 
-  async function copyCode(code) {
-    await navigator.clipboard.writeText(code)
-    setCopySuccess(true)
-    setTimeout(() => setCopySuccess(false), 2000)
+  async function sendPasswordReset(childEmail) {
+    if (!childEmail) return
+    await supabase.auth.resetPasswordForEmail(childEmail, {
+      redirectTo: window.location.origin + '/matemagia/',
+    })
+    setResetToast('Correo de recuperación enviado a ' + childEmail)
+    setTimeout(() => setResetToast(''), 4000)
   }
 
   const parentName = user?.user_metadata?.full_name?.split(' ')[0] || 'Apoderado'
@@ -84,6 +165,13 @@ export default function ParentDashboard() {
         </div>
       </div>
 
+      {/* Reset toast */}
+      {resetToast && (
+        <div className="fixed top-4 left-4 right-4 z-50 bg-green-600 text-white rounded-2xl px-4 py-3 text-sm font-bold text-center shadow-lg">
+          ✅ {resetToast}
+        </div>
+      )}
+
       <div className="px-4 py-4 space-y-4">
         {/* Children list */}
         {loading ? (
@@ -94,73 +182,72 @@ export default function ParentDashboard() {
             <p className="font-black text-gray-700 text-lg">Aún no tienes estudiantes vinculados</p>
             <p className="text-gray-500 text-sm">Para vincular a tu hijo/a:</p>
             <ol className="text-left text-sm text-gray-600 space-y-1 bg-green-50 rounded-2xl p-4 border border-green-100">
-              <li><span className="font-bold text-green-700">1.</span> Copia tu código de invitación (abajo)</li>
-              <li><span className="font-bold text-green-700">2.</span> Compártelo con tu hijo/a</li>
-              <li><span className="font-bold text-green-700">3.</span> Tu hijo/a lo ingresa en <span className="font-bold">Perfil → Vincularme con mi apoderado</span></li>
+              <li><span className="font-bold text-green-700">1.</span> Pídele a tu hijo/a que abra la app y vaya a su <span className="font-bold">Perfil</span></li>
+              <li><span className="font-bold text-green-700">2.</span> Pídele que comparta su <span className="font-bold">código de vinculación</span></li>
+              <li><span className="font-bold text-green-700">3.</span> Ingresa su correo y código abajo</li>
             </ol>
           </div>
         ) : (
           children.map(p => (
-            <ChildCard key={p.user_id} progress={p} />
+            <ChildCard key={p.user_id} progress={p} onSendReset={sendPasswordReset} />
           ))
         )}
 
-        {/* Pending invites */}
-        {pendingLinks.length > 0 && (
-          <div className="bg-yellow-50 rounded-2xl p-4 border border-yellow-200">
-            <h3 className="font-black text-yellow-800 mb-2">⏳ Invitaciones pendientes</h3>
-            {pendingLinks.map(link => (
-              <div key={link.invite_code} className="flex items-center justify-between py-2 border-b border-yellow-200 last:border-0">
-                <span className="font-mono font-bold text-yellow-800 text-sm tracking-widest">{link.invite_code}</span>
-                <button onClick={() => copyCode(link.invite_code)} className="text-yellow-600 text-xs">📋 Copiar</button>
-              </div>
-            ))}
+        {/* Success message */}
+        {linkSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 text-green-700 font-bold text-sm text-center">
+            ✅ {linkSuccess}
           </div>
         )}
 
-        {/* Invite section */}
+        {/* Link section */}
         <div className="bg-white rounded-3xl p-5 shadow-sm border border-green-100 space-y-3">
-          <h3 className="font-black text-gray-800">🔗 Vincular otro hijo/a</h3>
-          <p className="text-sm text-gray-500">Genera un código de invitación para tu hijo/a</p>
+          <h3 className="font-black text-gray-800">🔗 Agregar hijo/a</h3>
 
-          {!showInvite ? (
-            <button onClick={() => setShowInvite(true)}
+          {!showLinkForm ? (
+            <button onClick={() => { setShowLinkForm(true); setLinkError(''); setLinkSuccess('') }}
               className="w-full bg-green-600 text-white rounded-2xl py-3 font-black text-sm flex items-center justify-center gap-2 active:scale-95">
-              + Crear código de invitación
+              + Vincular estudiante
             </button>
           ) : (
-            <>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">Ingresa el correo y el código que tu hijo/a ve en su Perfil.</p>
+
               <input
-                value={childEmail}
-                onChange={e => setChildEmail(e.target.value)}
-                placeholder="Email del estudiante (opcional)"
+                value={childEmailInput}
+                onChange={e => setChildEmailInput(e.target.value)}
+                placeholder="Correo del estudiante"
                 type="email"
+                maxLength={254}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-400"
               />
+
+              <input
+                value={childCodeInput}
+                onChange={e => setChildCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7))}
+                placeholder="Código del estudiante (ej: JV3-ZUN)"
+                maxLength={7}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono tracking-widest uppercase focus:outline-none focus:border-green-400"
+              />
+
+              {linkError && (
+                <p className="text-red-500 text-sm font-semibold">{linkError}</p>
+              )}
+
               <div className="flex gap-2">
-                <button onClick={createInvite}
-                  className="flex-1 bg-green-600 text-white rounded-xl py-3 font-bold text-sm">
-                  Generar código
+                <button
+                  onClick={linkChild}
+                  disabled={linking}
+                  className="flex-1 bg-green-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 active:scale-95"
+                >
+                  {linking ? 'Verificando...' : 'Vincular'}
                 </button>
-                <button onClick={() => setShowInvite(false)}
+                <button onClick={() => { setShowLinkForm(false); setLinkError('') }}
                   className="px-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm">
                   Cancelar
                 </button>
               </div>
-              {inviteCode && (
-                <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                  <p className="text-sm text-green-700 font-semibold mb-2">¡Código listo! Compártelo con tu hijo/a:</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-black text-green-800 font-mono tracking-widest">{inviteCode}</span>
-                    <button onClick={() => copyCode(inviteCode)}
-                      className="bg-green-600 text-white rounded-lg px-3 py-1 text-xs font-bold">
-                      {copySuccess ? '✓' : 'Copiar'}
-                    </button>
-                  </div>
-                  <p className="text-xs text-green-600 mt-2">El estudiante debe ingresar este código en su perfil</p>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
 
@@ -173,7 +260,7 @@ export default function ParentDashboard() {
   )
 }
 
-function ChildCard({ progress: p }) {
+function ChildCard({ progress: p, onSendReset }) {
   if (!p) return null
 
   const completedCount = p.completed_topics?.length || 0
@@ -230,7 +317,7 @@ function ChildCard({ progress: p }) {
       </div>
 
       {/* Curriculum progress */}
-      <div>
+      <div className="mb-4">
         <div className="flex justify-between text-xs text-gray-500 mb-1">
           <span>Progreso del currículo</span>
           <span>{Math.round((completedCount / totalTopics) * 100)}%</span>
@@ -240,6 +327,16 @@ function ChildCard({ progress: p }) {
             style={{ width: `${(completedCount / totalTopics) * 100}%` }} />
         </div>
       </div>
+
+      {/* Password reset */}
+      {p.child_email && (
+        <button
+          onClick={() => onSendReset(p.child_email)}
+          className="w-full text-xs text-gray-400 border border-gray-200 rounded-xl py-2 font-semibold hover:bg-gray-50 active:scale-95 transition-all"
+        >
+          📧 Enviar reset de contraseña
+        </button>
+      )}
     </div>
   )
 }

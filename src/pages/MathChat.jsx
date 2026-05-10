@@ -2,13 +2,51 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProgress } from '../contexts/ProgressContext'
 import { generateResponse, getWelcomeMessage } from '../lib/mathTutor'
+import { gradeLabel } from '../lib/curriculum'
 import TopBar from '../components/layout/TopBar'
+
+function getQuickChips(grade) {
+  if (grade <= 2) {
+    return [
+      '¿Cuánto es 5 + 3?',
+      '¿Cuánto es 9 - 4?',
+      '¿Cuántos son 2 + 2 + 1?',
+      '¿Qué número va después del 8?',
+    ]
+  }
+  if (grade <= 4) {
+    return [
+      '¿Cuánto es 6 × 7?',
+      '¿Cuánto es 48 ÷ 6?',
+      '¿Cuánto es 25 + 37?',
+      '¿Cuánto es 100 - 45?',
+    ]
+  }
+  if (grade <= 6) {
+    return [
+      '¿Cómo se resuelve x + 5 = 12?',
+      '¿Qué es una fracción?',
+      'Ayuda con decimales',
+      '¿Cómo calculo porcentajes?',
+    ]
+  }
+  // Grades 7-8
+  return [
+    '¿Cuánto es (-5) + 8?',
+    'Resuelve 3x - 5 = 10',
+    'Media de 3, 7, 5, 9, 1',
+    'Probabilidad 3 de 10',
+  ]
+}
 
 export default function MathChat() {
   const navigate = useNavigate()
   const { progress } = useProgress()
+  const grade = progress.currentGrade || 1
+  const gradeLbl = gradeLabel(grade)
+
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: getWelcomeMessage(), id: 0 }
+    { role: 'assistant', text: getWelcomeMessage(grade), id: 0 }
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
@@ -25,15 +63,13 @@ export default function MathChat() {
     setMessages(prev => [...prev, userMsg])
     setTyping(true)
 
-    // Simulate typing delay
     setTimeout(() => {
-      const { message } = generateResponse(text, progress.currentTopic)
+      const { message } = generateResponse(text, progress.currentTopic, grade)
       setMessages(prev => [...prev, { role: 'assistant', text: message, id: Date.now() + 1 }])
       setTyping(false)
     }, 800 + Math.random() * 400)
   }
 
-  // Render message text with basic markdown (bold, newlines)
   function renderText(text) {
     return text.split('\n').map((line, i) => {
       const parts = line.split(/\*\*(.*?)\*\*/g)
@@ -45,13 +81,15 @@ export default function MathChat() {
     })
   }
 
+  const chips = getQuickChips(grade)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex flex-col pb-20">
-      <TopBar title="🧙‍♂️ Tutor MateMagia" onBack={() => navigate(-1)} />
+      <TopBar title={`🧙‍♂️ Tutor · ${gradeLbl} Básico`} onBack={() => navigate(-1)} />
 
       {/* Quick question chips */}
       <div className="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-        {['¿Cómo se resuelve x + 5 = 12?', '¿Qué es una fracción?', 'Ayuda con decimales', '¿Cómo calculo porcentajes?'].map(q => (
+        {chips.map(q => (
           <button key={q}
             onClick={() => { setInput(q) }}
             className="flex-shrink-0 bg-white border border-purple-200 text-purple-700 text-xs font-semibold px-3 py-2 rounded-full hover:bg-purple-50 transition-all">

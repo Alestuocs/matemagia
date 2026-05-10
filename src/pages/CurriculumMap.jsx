@@ -10,6 +10,8 @@ const GRADE_COLORS = {
   4: 'from-orange-400 to-amber-500',
   5: 'from-pink-400 to-rose-500',
   6: 'from-red-400 to-orange-500',
+  7: 'from-indigo-400 to-blue-600',
+  8: 'from-gray-500 to-slate-600',
 }
 
 const GRADE_BG = {
@@ -19,6 +21,8 @@ const GRADE_BG = {
   4: 'bg-orange-50 border-orange-200',
   5: 'bg-pink-50 border-pink-200',
   6: 'bg-red-50 border-red-200',
+  7: 'bg-indigo-50 border-indigo-200',
+  8: 'bg-slate-50 border-slate-200',
 }
 
 export default function CurriculumMap() {
@@ -26,7 +30,7 @@ export default function CurriculumMap() {
   const { progress } = useProgress()
 
   const currentGrade = progress.currentGrade || 1
-  const grades = [1, 2, 3, 4, 5, 6]
+  const grades = [1, 2, 3, 4, 5, 6, 7, 8]
 
   return (
     <div className="pb-24">
@@ -35,18 +39,39 @@ export default function CurriculumMap() {
       <div className="px-4 max-w-lg mx-auto space-y-6 mt-4">
         {grades.map(grade => {
           const topics = CURRICULUM.filter(t => t.gradeLevel === grade)
+          if (topics.length === 0) return null
+
           const completed = topics.filter(t => progress.completedTopics.includes(t.id)).length
           const pct = Math.round((completed / topics.length) * 100)
           const isCurrentGrade = grade === currentGrade
           const isPreviousGrade = grade < currentGrade
           const isFutureGrade = grade > currentGrade
 
-          // Skip fully locked future grades that have no unlocked topics
+          // Future grades: show as locked unless has unlocked topics
           const hasAnyUnlocked = topics.some(t => progress.unlockedTopics.includes(t.id))
-          if (isFutureGrade && !hasAnyUnlocked) return null
+          if (isFutureGrade && !hasAnyUnlocked) {
+            return (
+              <div key={grade} className="rounded-3xl border-2 p-4 bg-gray-50 border-gray-200 opacity-60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-black text-lg text-gray-400">{GRADE_LABELS[grade]}</h2>
+                      <span className="text-xs font-bold bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">
+                        🔒 Bloqueado
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-400 font-semibold">{topics.length} temas</div>
+                  </div>
+                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${GRADE_COLORS[grade] || 'from-gray-400 to-gray-500'} flex items-center justify-center font-black text-white text-xl opacity-40`}>
+                    {grade}
+                  </div>
+                </div>
+              </div>
+            )
+          }
 
           return (
-            <div key={grade} className={`rounded-3xl border-2 p-4 ${GRADE_BG[grade]}`}>
+            <div key={grade} className={`rounded-3xl border-2 p-4 ${GRADE_BG[grade] || 'bg-gray-50 border-gray-200'}`}>
               {/* Grade header */}
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -59,13 +84,13 @@ export default function CurriculumMap() {
                     )}
                     {isCurrentGrade && (
                       <span className="text-xs font-bold bg-magic-100 text-magic-700 px-2 py-0.5 rounded-full">
-                        Tu grado
+                        Tu Grado
                       </span>
                     )}
                   </div>
                   <div className="text-sm text-gray-500 font-semibold">{completed}/{topics.length} temas</div>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${GRADE_COLORS[grade]} flex items-center justify-center font-black text-white text-xl`}>
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${GRADE_COLORS[grade] || 'from-gray-400 to-gray-500'} flex items-center justify-center font-black text-white text-xl`}>
                   {grade}
                 </div>
               </div>
@@ -73,7 +98,7 @@ export default function CurriculumMap() {
               {/* Progress bar */}
               <div className="h-2 bg-white rounded-full overflow-hidden mb-4 border border-gray-200">
                 <div
-                  className={`h-full bg-gradient-to-r ${isPreviousGrade ? 'from-blue-400 to-cyan-400' : GRADE_COLORS[grade]} rounded-full transition-all duration-700`}
+                  className={`h-full bg-gradient-to-r ${isPreviousGrade ? 'from-blue-400 to-cyan-400' : (GRADE_COLORS[grade] || 'from-gray-400 to-gray-500')} rounded-full transition-all duration-700`}
                   style={{ width: `${pct}%` }}
                 />
               </div>

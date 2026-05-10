@@ -673,60 +673,273 @@ const TOPIC_EXPLANATIONS = {
   general: `¡Hola! Soy tu tutor de MateMagia 🧙‍♂️✨\n\nPuedo ayudarte con:\n- ➕ Sumas, restas, multiplicaciones, divisiones\n- 🍕 Fracciones (sumar, restar, simplificar, comparar)\n- 🔢 Decimales y porcentajes\n- ⚖️ Ecuaciones con x\n- 🔢 Potencias y raíces\n- 📐 Geometría (áreas y perímetros)\n- 📖 Problemas de palabras en español\n\nEjemplos de lo que puedes escribir:\n- "¿Cuánto es 3/4 + 1/2?"\n- "Resuelve 2x + 3 = 11"\n- "¿Cuánto es el 30% de 150?"\n- "Área de un rectángulo de 5 × 8"\n- "√64"\n\n¿Qué quieres calcular hoy? 😊`,
 }
 
+// ── Grade-aware helpers ───────────────────────────────────────────────────────
+
+function gradeIntro(grade) {
+  if (grade <= 2) return rand(['¡Hola! 😊', '¡Qué buena pregunta! 🌟', '¡Eso está genial! 🎉'])
+  if (grade <= 4) return rand(['¡Claro!', '¡Buena pregunta!', '¡Con gusto te explico!'])
+  if (grade <= 6) return rand(['¡Vamos a resolverlo! 🔢', '¡Con gusto te ayudo!', '¡Excelente consulta!'])
+  return rand(['Excelente consulta.', 'Claro, lo analizamos.', 'Muy bien, veamos.'])
+}
+
+function gradeEncouragement(grade) {
+  if (grade <= 2) return rand(['¡Lo hiciste muy bien! 🎊', '¡Eres increíble! ⭐', '¡Sigue así! 🌈'])
+  if (grade <= 4) return rand(['¡Muy bien! 🌟', '¡Excelente! 💪', '¡Sigue practicando! 🚀'])
+  if (grade <= 6) return rand(['¡Excelente trabajo! 🔥', '¡Perfecto razonamiento! ✨', '¡Lo lograste! 🎉'])
+  return rand(['Buen razonamiento.', 'Correcto. Practica más problemas similares.', 'Sólido.'])
+}
+
+function gradeStepLabel(i, grade) {
+  if (grade <= 2) return ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'][i] || `${i + 1}.`
+  return `**Paso ${i + 1}:**`
+}
+
+// ── Additional solvers for grades 7-8 ────────────────────────────────────────
+
+function solveIntegers(text) {
+  const n = norm(text)
+  const nums = extractNumbers(text)
+  if (nums.length < 2) return null
+  const [a, b] = nums
+
+  // Detect negative + negative, positive + negative, etc.
+  if (n.includes('negativ') || text.match(/-\s*\d/)) {
+    if (n.includes('sum') || text.includes('+')) {
+      return {
+        steps: [
+          `Suma de enteros: **${a} + (${b})**`,
+          `Usamos la recta numérica: comenzamos en ${a}`,
+          b >= 0 ? `Avanzamos ${b} pasos a la derecha` : `Retrocedemos ${Math.abs(b)} pasos a la izquierda`,
+          `**Resultado: ${a + b}**`,
+        ],
+        answer: String(a + b),
+      }
+    }
+    if (n.includes('rest') || text.includes('-')) {
+      return {
+        steps: [
+          `Resta de enteros: **${a} − ${b}**`,
+          `Restar es sumar el opuesto: ${a} + (${-b})`,
+          `En la recta numérica: de ${a}, nos movemos ${Math.abs(b)} pasos ${-b >= 0 ? 'a la derecha' : 'a la izquierda'}`,
+          `**Resultado: ${a - b}**`,
+        ],
+        answer: String(a - b),
+      }
+    }
+  }
+  return null
+}
+
+function solveStatistics(text) {
+  const n = norm(text)
+  const nums = extractNumbers(text)
+  if (nums.length < 2) return null
+
+  const sorted = [...nums].sort((a, b) => a - b)
+  const sum = nums.reduce((acc, v) => acc + v, 0)
+  const mean = Math.round((sum / nums.length) * 100) / 100
+
+  // Median
+  const mid = Math.floor(sorted.length / 2)
+  const median = sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid]
+
+  // Mode
+  const freq = {}
+  nums.forEach(v => { freq[v] = (freq[v] || 0) + 1 })
+  const maxFreq = Math.max(...Object.values(freq))
+  const mode = Object.keys(freq).filter(k => freq[k] === maxFreq)
+
+  if (n.includes('media') || n.includes('promedio') || n.includes('average')) {
+    return {
+      steps: [
+        `Datos: **${nums.join(', ')}**`,
+        `Suma de todos los valores: ${nums.join(' + ')} = ${sum}`,
+        `Dividimos entre la cantidad de datos: ${sum} ÷ ${nums.length}`,
+        `**Media = ${mean}**`,
+      ],
+      answer: String(mean),
+    }
+  }
+  if (n.includes('mediana')) {
+    return {
+      steps: [
+        `Datos ordenados: **${sorted.join(', ')}**`,
+        `Hay ${sorted.length} datos`,
+        sorted.length % 2 === 0
+          ? `Como son par, promediamos los dos centrales: (${sorted[mid - 1]} + ${sorted[mid]})/2`
+          : `El valor central (posición ${mid + 1}) es:`,
+        `**Mediana = ${median}**`,
+      ],
+      answer: String(median),
+    }
+  }
+  if (n.includes('moda')) {
+    return {
+      steps: [
+        `Datos: **${nums.join(', ')}**`,
+        `Contamos frecuencias: ${Object.entries(freq).map(([k, v]) => `${k}→${v}`).join(', ')}`,
+        `El/los valor(es) más frecuente(s) aparece(n) ${maxFreq} vez/veces`,
+        `**Moda = ${mode.join(', ')}**`,
+      ],
+      answer: mode.join(', '),
+    }
+  }
+  if (n.includes('rango')) {
+    const range = sorted[sorted.length - 1] - sorted[0]
+    return {
+      steps: [
+        `Datos ordenados: **${sorted.join(', ')}**`,
+        `Máximo: ${sorted[sorted.length - 1]} | Mínimo: ${sorted[0]}`,
+        `Rango = Máximo − Mínimo`,
+        `**Rango = ${range}**`,
+      ],
+      answer: String(range),
+    }
+  }
+
+  return null
+}
+
+function solveProbability(text) {
+  const n = norm(text)
+  const nums = extractNumbers(text)
+  if (nums.length < 2) return null
+
+  const [favorable, total] = nums
+  if (total === 0) return null
+
+  const { num, den } = simplifyFraction(favorable, total)
+  const decimal = Math.round((favorable / total) * 10000) / 10000
+  const pct = Math.round(decimal * 10000) / 100
+
+  return {
+    steps: [
+      `Probabilidad: casos favorables / casos totales`,
+      `Favorables: ${favorable} | Total posible: ${total}`,
+      `P = ${favorable}/${total}`,
+      num !== favorable ? `Simplificando: **${num}/${den}**` : `**P = ${num}/${den}**`,
+      `En decimal: ${decimal} | En porcentaje: ${pct}%`,
+    ],
+    answer: `${num}/${den}`,
+  }
+}
+
+function solveRatiosProportion(text) {
+  const n = norm(text)
+  const nums = extractNumbers(text)
+
+  // Cross multiplication: a/b = c/x or a:b = c:x
+  if ((n.includes('proporcion') || n.includes('por cada') || n.includes('razon')) && nums.length >= 3) {
+    const [a, b, c] = nums
+    const x = (b * c) / a
+    return {
+      steps: [
+        `Proporción: ${a}/${b} = ${c}/x`,
+        `Multiplicación cruzada: a × x = b × c`,
+        `${a} × x = ${b} × ${c}`,
+        `${a}x = ${b * c}`,
+        `**x = ${b * c} ÷ ${a} = ${x}**`,
+      ],
+      answer: String(x),
+    }
+  }
+
+  return null
+}
+
+// Augmented PATTERNS for grades 7-8
+const PATTERNS_EXTENDED = {
+  ...{ integers: /entero|negativ|\(-?\d|^\s*-\s*\d/ },
+  stats: /promedio|media|mediana|moda|rango|datos:/,
+  probability: /probabilidad|posibilidad|de cada|favorable|cuantas formas/,
+  ratio: /razon|proporcion|por cada|escala|receta/,
+}
+
+function detectTypeExtended(text) {
+  const n = norm(text)
+  for (const [type, re] of Object.entries(PATTERNS_EXTENDED)) {
+    if (re.test(n)) return type
+  }
+  return null
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function generateResponse(userMessage, topicContext = null) {
+export function generateResponse(userMessage, topicContext = null, gradeLevel = 1) {
   const text = userMessage.trim()
+  const grade = Math.max(1, Math.min(8, gradeLevel || 1))
+
   if (!text) {
     return { message: TOPIC_EXPLANATIONS.general, type: 'general' }
   }
 
-  const type = detectType(text)
-
-  // 1. Try geometry (must come before arithmetic to catch "area de rectangulo 5 8")
-  if (type === 'geometry') {
-    const r = solveGeometry(text)
-    if (r) return fmt(r, 'geometry')
+  // Extended type detection for grades 7-8
+  const extType = detectTypeExtended(text)
+  if (extType === 'stats') {
+    const r = solveStatistics(text)
+    if (r) return fmtGrade(r, 'statistics', grade)
+  }
+  if (extType === 'probability') {
+    const r = solveProbability(text)
+    if (r) return fmtGrade(r, 'probability', grade)
+  }
+  if (extType === 'ratio') {
+    const r = solveRatiosProportion(text)
+    if (r) return fmtGrade(r, 'ratio', grade)
+  }
+  if (extType === 'integers') {
+    const r = solveIntegers(text)
+    if (r) return fmtGrade(r, 'integers', grade)
   }
 
-  // 2. Try algebra (before arithmetic to catch "2x + 3 = 7")
+  const type = detectType(text)
+
+  // 1. Try geometry
+  if (type === 'geometry') {
+    const r = solveGeometry(text)
+    if (r) return fmtGrade(r, 'geometry', grade)
+  }
+
+  // 2. Try algebra
   if (type === 'algebra') {
     const r = solveAlgebra(text)
-    if (r) return fmt(r, 'algebra')
+    if (r) return fmtGrade(r, 'algebra', grade)
   }
 
   // 3. Try fraction operations
   if (type === 'fraction') {
     const r = solveFraction(text)
-    if (r) return fmt(r, 'fraction')
+    if (r) return fmtGrade(r, 'fraction', grade)
   }
 
   // 4. Try percentage
   if (type === 'percentage') {
     const r = solvePercentage(text)
-    if (r) return fmt(r, 'percentage')
+    if (r) return fmtGrade(r, 'percentage', grade)
   }
 
   // 5. Try powers and roots
   if (type === 'power') {
     const r = solvePower(text)
-    if (r) return fmt(r, 'power')
+    if (r) return fmtGrade(r, 'power', grade)
   }
 
-  // 6. Try direct arithmetic expression (catches "3 + 4", "100 / 5", etc.)
+  // 6. Try direct arithmetic expression
   const arithResult = solveArithmetic(text)
-  if (arithResult) return fmt(arithResult, type)
+  if (arithResult) return fmtGrade(arithResult, type, grade)
 
   // 7. Try decimal operations
   if (type === 'decimal') {
     const r = solveDecimal(text)
-    if (r) return fmt(r, 'decimal')
+    if (r) return fmtGrade(r, 'decimal', grade)
   }
 
   // 8. Try word problem
   if (type === 'wordproblem') {
     const r = solveWordProblem(text)
-    if (r) return fmt(r, 'wordproblem')
+    if (r) return fmtGrade(r, 'wordproblem', grade)
   }
 
   // 9. Fallback: return topic explanation
@@ -737,22 +950,55 @@ export function generateResponse(userMessage, topicContext = null) {
   }
 }
 
-function fmt({ steps, answer }, type) {
-  const stepsText = steps
-    .map((s, i) => s === '' ? '' : `**Paso ${i + 1}:** ${s}`)
-    .join('\n')
-    .replace(/\*\*Paso \d+:\*\* \*\*Paso/g, '**Paso')  // clean up double step labels on blank lines
-  // Remove step numbers from blank lines
+function fmtGrade({ steps, answer }, type, grade = 1) {
+  const intro = gradeIntro(grade)
+  const enc = gradeEncouragement(grade)
+
+  // Format steps with grade-appropriate numbering
   const cleanSteps = steps
-    .map((s, i) => s === '' ? '' : `**Paso ${i + 1}:** ${s}`)
+    .map((s, i) => s === '' ? '' : `${gradeStepLabel(i, grade)} ${s}`)
     .filter(Boolean)
     .join('\n')
+
+  // Grade-appropriate ending
+  let ending = ''
+  if (grade <= 2) {
+    ending = `\n\n🌟 **¡${enc}** ¿Quieres intentar otro? 😊`
+  } else if (grade <= 4) {
+    ending = `\n\n${enc}\n\n¿Tienes otra pregunta? 😊`
+  } else if (grade <= 6) {
+    ending = `\n\n${enc}\n\n¿Necesitas otro ejemplo?`
+  } else {
+    ending = `\n\n${enc}\n\n¿Quieres practicar con otro ejercicio?`
+  }
+
+  // For grades 7-8: add formal notation hint
+  let formalNote = ''
+  if (grade >= 7 && (type === 'algebra' || type === 'power' || type === 'statistics')) {
+    formalNote = '\n\n*Notación formal: aplica las propiedades algebraicas correspondientes al resolver.*'
+  }
+
   return {
-    message: `${rand(['¡Claro!', '¡Buena pregunta!', '¡Vamos a resolverlo! 🔢', '¡Con gusto te ayudo!'])} Vamos paso a paso:\n\n${cleanSteps}\n\n✅ **Resultado: ${answer}**\n\n${encourage()}\n\n¿Tienes otra pregunta? 😊`,
+    message: `${intro} Vamos paso a paso:\n\n${cleanSteps}\n\n✅ **Resultado: ${answer}**${formalNote}${ending}`,
     type,
   }
 }
 
-export function getWelcomeMessage() {
-  return `¡Hola! Soy tu tutor de MateMagia 🧙‍♂️✨\n\nPuedo ayudarte con cualquier operación matemática. Por ejemplo:\n- "¿Cuánto es 3/4 + 1/2?"\n- "Resuelve 2x + 3 = 11"\n- "¿Cuál es el 25% de 200?"\n- "Área de un rectángulo de base 6 y altura 4"\n- "√144"\n- "Simplifican 12/18"\n\n¿En qué te ayudo hoy? 😊`
+// Keep the original fmt for internal use (wraps fmtGrade with grade=1 for backward compat)
+function fmt(result, type) {
+  return fmtGrade(result, type, 1)
+}
+
+export function getWelcomeMessage(grade = 1) {
+  if (grade <= 2) {
+    return `¡Hola! Soy tu tutor de MateMagia 🧙‍♂️✨\n\nPuedo ayudarte con las matemáticas. Por ejemplo:\n- "¿Cuánto es 3 + 4?" 🍎\n- "¿Cuánto es 10 - 3?"\n- "¿Cuántos son 5 + 2 + 1?"\n\n¡Escríbeme tu pregunta! 😊`
+  }
+  if (grade <= 4) {
+    return `¡Hola! Soy tu tutor de MateMagia 🧙‍♂️✨\n\nPuedo ayudarte con:\n- Sumas y restas\n- Multiplicaciones y divisiones\n- ¿Cuánto es 5 × 7?\n- Tablas de multiplicar\n\n¿Qué quieres aprender hoy? 😊`
+  }
+  if (grade <= 6) {
+    return `¡Hola! Soy tu tutor de MateMagia 🧙‍♂️✨\n\nPuedo ayudarte con:\n- Fracciones: "¿Cuánto es 3/4 + 1/2?"\n- Decimales y porcentajes\n- Ecuaciones: "Resuelve 2x + 3 = 11"\n- Geometría: áreas y perímetros\n\n¿En qué te ayudo hoy? 😊`
+  }
+  // Grades 7-8
+  return `Hola. Soy tu tutor de MateMagia 🧙‍♂️\n\nPuedo ayudarte con:\n- Números enteros: "¿Cuánto es (-5) + 8?"\n- Álgebra: "Resuelve 3x − 5 = 10"\n- Estadística: "Calcula la media de 3, 7, 5, 9"\n- Probabilidad: "probabilidad 3 de 8"\n- Potencias y raíces: "2^6" o "√144"\n\n¿En qué te puedo ayudar?`
 }

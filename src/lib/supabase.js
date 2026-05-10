@@ -7,6 +7,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'matemagia-auth',
+  },
+  global: {
+    headers: { 'x-application-name': 'matemagia' },
   },
 })
 

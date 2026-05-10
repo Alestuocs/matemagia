@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CURRICULUM } from '../lib/curriculum'
+import { CURRICULUM, gradeLabel } from '../lib/curriculum'
 import { useProgress } from '../contexts/ProgressContext'
 import TopBar from '../components/layout/TopBar'
 import Celebration from '../components/ui/Celebration'
@@ -8,6 +8,10 @@ import Celebration from '../components/ui/Celebration'
 export default function PracticeMode() {
   const navigate = useNavigate()
   const { progress, saveAttempt } = useProgress()
+
+  const maxGrade = progress.currentGrade || 1
+  const [practiceGrade, setPracticeGrade] = useState(maxGrade)
+
   const [score, setScore] = useState({ correct: 0, total: 0 })
   const [showCelebration, setShowCelebration] = useState(false)
   const [streak, setStreak] = useState(0)
@@ -16,21 +20,28 @@ export default function PracticeMode() {
   const [userInput, setUserInput] = useState('')
   const [feedback, setFeedback] = useState(null) // null | 'correct' | 'wrong'
 
-  // Track shown exercise hashes in session (simple in-memory for now)
   const [seenHashes] = useState(new Set())
 
-  // Get unlocked topics for practice
-  const availableTopics = CURRICULUM.filter(t =>
-    progress.unlockedTopics?.includes(t.id) || t.gradeLevel <= (progress.currentGrade || 1)
-  )
+  // Filter topics: 60% from current practice grade, 40% from previous grades
+  const currentGradeTopics = CURRICULUM.filter(t => t.gradeLevel === practiceGrade)
+  const prevGradeTopics = CURRICULUM.filter(t => t.gradeLevel < practiceGrade)
+
+  const availableTopics = CURRICULUM.filter(t => t.gradeLevel <= practiceGrade)
+
+  function getWeightedTopic() {
+    if (availableTopics.length === 0) return null
+    // 60% chance pick from current grade, 40% from previous
+    const useCurrentGrade = (currentGradeTopics.length > 0) &&
+      (prevGradeTopics.length === 0 || Math.random() < 0.6)
+    const pool = useCurrentGrade ? currentGradeTopics : (prevGradeTopics.length > 0 ? prevGradeTopics : currentGradeTopics)
+    return pool[Math.floor(Math.random() * pool.length)]
+  }
 
   function generateExercise() {
     if (availableTopics.length === 0) return null
-    // Pick random topic from available
-    const topic = availableTopics[Math.floor(Math.random() * availableTopics.length)]
+    const topic = getWeightedTopic()
     if (!topic) return null
 
-    // Generate exercises and find one not seen
     let exercises = topic.generateExercises(10)
     let exercise = null
     for (const ex of exercises) {
@@ -41,7 +52,6 @@ export default function PracticeMode() {
         break
       }
     }
-    // If all seen, just pick random (reset mental model)
     if (!exercise) {
       const ex = exercises[Math.floor(Math.random() * exercises.length)]
       exercise = { ...ex, topicId: topic.id, topicTitle: topic.title, topicIcon: topic.icon }
@@ -82,6 +92,16 @@ export default function PracticeMode() {
     }
   }
 
+  function handleGradeChange(g) {
+    setPracticeGrade(g)
+    setFeedback(null)
+    setShowExplanation(false)
+    setUserInput('')
+    setLastAnswer(null)
+    // Regenerate exercise for new grade
+    setTimeout(() => setCurrentExercise(generateExercise()), 0)
+  }
+
   if (!currentExercise) return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-yellow-50 flex-col gap-4 p-6">
       <div className="text-5xl">📚</div>
@@ -99,8 +119,33 @@ export default function PracticeMode() {
 
       <TopBar title="⚡ Modo Práctica" onBack={() => navigate(-1)} />
 
+      {/* Grade filter */}
+      <div className="px-4 pt-3 pb-2">
+        <div className="bg-white rounded-2xl px-4 py-2 shadow-sm border border-purple-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <span className="text-xs font-bold text-gray-500 whitespace-nowrap flex-shrink-0">Practicando hasta:</span>
+          <div className="flex gap-1">
+            {Array.from({ length: maxGrade }, (_, i) => i + 1).map(g => (
+              <button
+                key={g}
+                onClick={() => handleGradeChange(g)}
+                className={`flex-shrink-0 px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  practiceGrade === g
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                }`}
+              >
+                {gradeLabel(g)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-1 px-1">
+          Practicando: hasta {gradeLabel(practiceGrade)} Básico · 60% de {gradeLabel(practiceGrade)}, 40% de grados anteriores
+        </p>
+      </div>
+
       {/* Stats bar */}
-      <div className="flex gap-3 px-4 py-3">
+      <div className="flex gap-3 px-4 py-2">
         <div className="flex-1 bg-white rounded-2xl p-3 text-center shadow-sm">
           <div className="text-2xl font-black text-green-600">{score.correct}</div>
           <div className="text-xs text-gray-500 font-semibold">Correctas</div>
@@ -160,7 +205,6 @@ export default function PracticeMode() {
                 onChange={e => setUserInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !feedback && userInput && handleAnswer(userInput)}
                 placeholder="Tu respuesta..."
-                type="number"
                 disabled={!!feedback}
                 className="flex-1 border-2 border-gray-200 rounded-2xl px-4 py-3 text-xl font-black text-center focus:outline-none focus:border-purple-400"
               />

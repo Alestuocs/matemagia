@@ -24,6 +24,7 @@ const DEFAULT_PROGRESS = {
   assessmentDone: false,
   lastDate: null,
   role: 'student',
+  inviteCode: '',      // read-only from DB, not written back
 }
 
 function loadLocal() {
@@ -88,6 +89,7 @@ export function ProgressProvider({ children }) {
           parentEmail: data.parent_email || '',
           assessmentDone: data.assessment_done || false,
           role: data.role || 'student',
+          inviteCode: data.invite_code || '',
         }
         setProgress(remote)
         saveLocal(remote)
@@ -224,7 +226,7 @@ export function ProgressProvider({ children }) {
     if (!has('multiplication-master') && p.completedTopics.includes('multiplication-6-10')) earned.push('multiplication-master')
 
     // Grade completions
-    for (let g = 1; g <= 6; g++) {
+    for (let g = 1; g <= 8; g++) {
       const gradeTopics = CURRICULUM.filter(t => t.gradeLevel === g).map(t => t.id)
       if (!has(`grade${g}-complete`) && gradeTopics.every(id => p.completedTopics.includes(id))) {
         earned.push(`grade${g}-complete`)
@@ -303,6 +305,7 @@ export function ProgressProvider({ children }) {
     saveExerciseHash,
     wasExerciseSeen,
     refreshProgress,
+    inviteCode: progress.inviteCode,
   }
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>

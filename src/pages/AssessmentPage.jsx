@@ -14,9 +14,11 @@ const ASSESSMENT_QUESTIONS = [
   { question: '¿Cuánto es 3/4 de 20?', answer: 15, grade: 5 },
   { question: '¿Cuánto es 1,5 + 2,3?', answer: 3.8, grade: 5 },
   { question: '¿Cuánto es el 25% de 80?', answer: 20, grade: 6 },
+  { question: '¿Cuánto es (-5) + 8?', answer: 3, grade: 7 },
+  { question: '¿Cuánto es 2³?', answer: 8, grade: 8 },
 ]
 
-const GRADE_EMOJIS = ['🌱', '🌿', '🌳', '🦋', '🚀', '🌟']
+const GRADE_EMOJIS = ['🌱', '🌿', '🌳', '🦋', '🚀', '🌟', '⭐', '🎓']
 
 const GRADE_DESCRIPTIONS = [
   'Números, sumas y restas básicas',
@@ -25,6 +27,8 @@ const GRADE_DESCRIPTIONS = [
   'Números grandes y fracciones simples',
   'Fracciones, decimales y porcentajes',
   'Ecuaciones y matemáticas avanzadas',
+  'Números enteros, álgebra y estadística',
+  'Potencias, ecuaciones avanzadas y probabilidad',
 ]
 
 function makeOpts(correct) {
@@ -52,7 +56,7 @@ export default function AssessmentPage() {
   const [showResult, setShowResult] = useState(false)
   const [inviteCode] = useState(Math.random().toString(36).substring(2, 10).toUpperCase())
 
-  const questions = ASSESSMENT_QUESTIONS.filter(q => q.grade <= (grade || 6))
+  const questions = ASSESSMENT_QUESTIONS.filter(q => q.grade <= (grade || 8))
 
   function handleAnswer(opt) {
     if (showResult) return
@@ -82,7 +86,7 @@ export default function AssessmentPage() {
 
     // Recommend grade: last grade with >50% correct
     let recommended = 1
-    for (let g = 1; g <= 6; g++) {
+    for (let g = 1; g <= 8; g++) {
       const data = correctByGrade[g]
       if (data && data.correct / data.total >= 0.5) {
         recommended = g
@@ -234,7 +238,7 @@ export default function AssessmentPage() {
             <p className="text-gray-500 font-semibold">{name}, ¡elige tu grado!</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {[1, 2, 3, 4, 5, 6].map(g => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(g => (
               <button
                 key={g}
                 onClick={() => { setGrade(g); setStep('confirm') }}
@@ -358,7 +362,7 @@ export default function AssessmentPage() {
       if (a.correct) correctByGrade[a.grade].correct++
     })
     let recommended = 1
-    for (let g = 1; g <= 6; g++) {
+    for (let g = 1; g <= 8; g++) {
       const data = correctByGrade[g]
       if (data && data.correct / data.total >= 0.5) recommended = g
     }

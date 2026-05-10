@@ -1572,6 +1572,647 @@ export const CURRICULUM = [
       })
     },
   },
+
+  // ── GRADE 7 ──────────────────────────────────
+  {
+    id: 'integers-intro',
+    gradeLevel: 7,
+    title: 'Números Enteros',
+    icon: '±',
+    description: 'Positivos, negativos y el cero',
+    orderIndex: 50,
+    type: 'numbers',
+    lessonSlides: [
+      { title: '¿Qué son los enteros?', content: 'Los números enteros incluyen positivos, negativos y el cero.\n...-3, -2, -1, 0, 1, 2, 3...', visual: '← -3  -2  -1  0  1  2  3 →' },
+      { title: 'La recta numérica', content: 'Hacia la derecha: números positivos.\nHacia la izquierda: números negativos.\nEl 0 es el centro.', visual: '0 es el punto de partida 🎯' },
+    ],
+    tips: ['Un número negativo es la deuda: -5 pesos = debes 5 pesos', 'Más lejos del cero = mayor valor absoluto', '|−7| = 7 (valor absoluto)'],
+    generateExercises: (count = 10) => {
+      const exs = []
+      const pairs = [[-3, 5], [-7, 2], [4, -8], [-1, -5], [10, -3], [-6, 6], [0, -4], [-2, 9], [8, -8], [-5, -3]]
+      pairs.slice(0, count).forEach(([a, b], i) => {
+        const ans = a + b
+        const opts = [...new Set([String(ans), String(ans + 2), String(ans - 2), String(-ans)])].slice(0, 4)
+        while (opts.length < 4) opts.push(String(ans + opts.length * 3))
+        exs.push({
+          id: `int-add-${i}`,
+          type: 'multiple-choice',
+          question: `¿Cuánto es ${a} + (${b >= 0 ? '+' : ''}${b})?`,
+          answer: String(ans),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: `Usa la recta numérica. Empieza en ${a} y muévete ${Math.abs(b)} pasos ${b >= 0 ? 'a la derecha' : 'a la izquierda'}.`,
+          explanation: `${a} + (${b}) = ${ans}. En la recta numérica: comienzas en ${a} y te mueves ${Math.abs(b)} pasos ${b >= 0 ? 'a la derecha (suma)' : 'a la izquierda (resta)'}.`,
+          difficulty: 2,
+          xpReward: 20,
+        })
+      })
+      return exs
+    },
+  },
+
+  {
+    id: 'integers-operations',
+    gradeLevel: 7,
+    title: 'Operaciones con Enteros',
+    icon: '➕➖',
+    description: 'Suma, resta y multiplica enteros',
+    orderIndex: 51,
+    type: 'arithmetic',
+    lessonSlides: [
+      { title: 'Reglas de los signos', content: 'Al multiplicar:\n(+)(+) = +\n(+)(−) = −\n(−)(−) = +', visual: '(−3) × (−4) = +12 ✅' },
+      { title: 'Resta de enteros', content: 'Restar un número es sumar su opuesto:\n5 − (−3) = 5 + 3 = 8', visual: '5 − (−3) = 8' },
+    ],
+    tips: ['Dos negativos multiplicados dan positivo', 'Restar negativo = sumar', 'Suma de dos negativos: suma los valores y pon el signo −'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: '(-4) × (-3)', a: 12 }, { q: '(-5) × 2', a: -10 }, { q: '7 − (−3)', a: 10 },
+        { q: '(-8) + (-2)', a: -10 }, { q: '(-3) × (-3)', a: 9 }, { q: '6 × (-4)', a: -24 },
+        { q: '(-15) − (-5)', a: -10 }, { q: '(-2) × (-7)', a: 14 }, { q: '(-9) + 4', a: -5 }, { q: '10 − (−6)', a: 16 },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 5), String(-p.a), String(p.a - 4)])].slice(0, 4)
+        return {
+          id: `int-op-${i}`,
+          type: 'multiple-choice',
+          question: `¿Cuánto es ${p.q}?`,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Recuerda las reglas de los signos: (−) × (−) = (+)',
+          explanation: `${p.q} = ${p.a}. Aplica las reglas de signos al operar.`,
+          difficulty: 2,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'ratios-proportions',
+    gradeLevel: 7,
+    title: 'Razones y Proporciones',
+    icon: '⚖️',
+    description: 'Compara cantidades con razones',
+    orderIndex: 52,
+    type: 'ratios',
+    lessonSlides: [
+      { title: '¿Qué es una razón?', content: 'Una razón compara dos cantidades.\nSi hay 3 niñas y 5 niños, la razón es 3:5.', visual: '3:5 o 3/5' },
+      { title: 'Proporciones', content: 'Dos razones son proporcionales si son iguales:\n1/2 = 2/4 = 3/6', visual: 'a/b = c/d → a×d = b×c' },
+    ],
+    tips: ['Una razón se puede escribir con ":" o como fracción', 'Para verificar una proporción: multiplica en cruz', 'Usa proporciones para recetas, mapas y escalas'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Si la razón de manzanas a naranjas es 2:3 y hay 8 manzanas, ¿cuántas naranjas hay?', a: 12, hint: '2/3 = 8/x → x = 8×3/2' },
+        { q: 'Si un auto recorre 120 km en 2 horas, ¿cuántos km recorre en 5 horas?', a: 300, hint: '120/2 = x/5' },
+        { q: '¿Son proporcionales 4/6 y 6/9?', a: 'Sí', hint: '4×9 = 36 y 6×6 = 36', isText: true },
+        { q: 'Si 3 lápices cuestan $450, ¿cuánto cuestan 7 lápices?', a: 1050, hint: '450/3 × 7' },
+        { q: 'La razón 15:25 simplificada es:', a: '3:5', hint: 'Divide ambos por 5', isText: true },
+        { q: 'Si x/4 = 6/8, ¿cuánto vale x?', a: 3, hint: 'x = 4 × 6/8' },
+        { q: 'En un mapa, 1 cm = 50 km. ¿Cuántos cm representan 250 km?', a: 5, hint: '250/50' },
+        { q: 'Si la razón hombres:mujeres es 3:4 y hay 21 hombres, ¿cuántas mujeres hay?', a: 28, hint: '3/4 = 21/x' },
+        { q: '¿Cuánto es x si 2/5 = x/20?', a: 8, hint: 'x = 20 × 2/5' },
+        { q: 'Mezcla de pintura: 3 partes azul por 2 roja. Para 15 litros de azul, ¿cuántos de roja?', a: 10, hint: '3/2 = 15/x' },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const isNum = !p.isText
+        const opts = isNum
+          ? [...new Set([String(p.a), String(p.a + 3), String(p.a - 2), String(p.a * 2)])].slice(0, 4)
+          : [String(p.a), 'No', 'A veces', 'Solo si son fracciones'].slice(0, 4)
+        return {
+          id: `ratio-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: p.hint,
+          explanation: `${p.q}\nRespuesta: ${p.a}. ${p.hint}`,
+          difficulty: 2,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'advanced-percentages',
+    gradeLevel: 7,
+    title: 'Porcentajes Avanzados',
+    icon: '📊',
+    description: 'Aumentos, descuentos y porcentaje de cambio',
+    orderIndex: 53,
+    type: 'percentage',
+    lessonSlides: [
+      { title: 'Aumento porcentual', content: 'Precio original × (1 + %/100)\nEj: $1000 con 20% de aumento = 1000 × 1.20 = $1200', visual: '$1000 → +20% → $1200' },
+      { title: 'Descuento porcentual', content: 'Precio original × (1 − %/100)\nEj: $500 con 15% descuento = 500 × 0.85 = $425', visual: '$500 → −15% → $425' },
+    ],
+    tips: ['Aumento: multiplica por (1 + %/100)', 'Descuento: multiplica por (1 − %/100)', 'Cambio %: (nuevo−original)/original × 100'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Un producto costaba $800. Subió un 25%. ¿Cuánto cuesta ahora?', a: 1000 },
+        { q: 'Una zapatilla cuesta $60.000 con 30% de descuento. ¿Cuánto ahorras?', a: 18000 },
+        { q: 'El precio bajó de $200 a $150. ¿Cuál es el % de descuento?', a: 25 },
+        { q: '¿Cuánto es el 40% de $3.500?', a: 1400 },
+        { q: 'Un computador costaba $400.000. Bajó un 10%. ¿Cuánto cuesta ahora?', a: 360000 },
+        { q: 'Si el IVA es 19%, ¿cuánto IVA se paga por $10.000?', a: 1900 },
+        { q: 'Las ventas subieron de 200 a 250 unidades. ¿Cuál es el % de aumento?', a: 25 },
+        { q: 'Un libro con 15% de descuento cuesta $85. ¿Cuál era el precio original?', a: 100 },
+        { q: '¿Cuánto es el 150% de 60?', a: 90 },
+        { q: 'Un sueldo de $500.000 sube 8%. ¿Cuál es el nuevo sueldo?', a: 540000 },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + Math.round(p.a * 0.1)), String(Math.round(p.a * 0.9)), String(p.a + 100)])].slice(0, 4)
+        return {
+          id: `pct-adv-${i}`,
+          type: i % 2 === 0 ? 'multiple-choice' : 'write-answer',
+          question: p.q,
+          answer: String(p.a),
+          options: i % 2 === 0 ? opts.sort(() => Math.random() - 0.5) : null,
+          hint: 'Usa: original × (1 ± %/100) para aumentos/descuentos',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 3,
+          xpReward: 25,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'algebra-expressions',
+    gradeLevel: 7,
+    title: 'Expresiones Algebraicas',
+    icon: '🔠',
+    description: 'Variables, términos y simplificación',
+    orderIndex: 54,
+    type: 'algebra',
+    lessonSlides: [
+      { title: '¿Qué es una variable?', content: 'Una variable (x, y, n) representa un número desconocido.\n3x significa "3 veces x"', visual: '3x + 2y − 5' },
+      { title: 'Términos semejantes', content: 'Solo se pueden combinar términos iguales:\n3x + 5x = 8x\n3x + 2y ≠ se puede combinar', visual: '3x + 5x = 8x ✅' },
+    ],
+    tips: ['Variables iguales se suman', 'El coeficiente es el número delante de la variable', 'Simplificar = juntar términos semejantes'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Simplifica: 3x + 5x', a: '8x' },
+        { q: 'Simplifica: 7y − 2y', a: '5y' },
+        { q: 'Si x = 4, ¿cuánto es 2x + 3?', a: '11' },
+        { q: 'Si n = 5, ¿cuánto es 3n − 1?', a: '14' },
+        { q: 'Simplifica: 4a + 2b − a + 3b', a: '3a + 5b' },
+        { q: 'Si x = 3 e y = 2, ¿cuánto es x² + y?', a: '11' },
+        { q: 'El perímetro de un cuadrado de lado x es:', a: '4x' },
+        { q: '¿Cuánto es 2(x + 3) si x = 5?', a: '16' },
+        { q: 'Simplifica: 6x − 2x + x', a: '5x' },
+        { q: 'Si x = −2, ¿cuánto es x² − x?', a: '6' },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        return {
+          id: `alg-expr-${i}`,
+          type: 'write-answer',
+          question: p.q,
+          answer: p.a,
+          options: null,
+          hint: 'Junta los términos con la misma variable',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 2,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'linear-equations',
+    gradeLevel: 7,
+    title: 'Ecuaciones Lineales',
+    icon: '🔢',
+    description: 'Resuelve ecuaciones con una incógnita',
+    orderIndex: 55,
+    type: 'algebra',
+    lessonSlides: [
+      { title: 'Principio de la balanza', content: 'Una ecuación es una balanza: lo que haces de un lado, lo haces del otro.', visual: '2x + 3 = 11 → 2x = 8 → x = 4' },
+      { title: 'Pasos para resolver', content: '1. Agrupa términos con x a un lado\n2. Agrupa números al otro\n3. Divide para despejar x', visual: 'ax + b = c → x = (c−b)/a' },
+    ],
+    tips: ['Haz lo mismo en ambos lados', 'La verificación: sustituye x y comprueba', 'Despeja siempre la incógnita'],
+    generateExercises: (count = 10) => {
+      const cases = [
+        { q: '2x + 3 = 11', a: 4 }, { q: '3x − 5 = 10', a: 5 }, { q: '5x = 35', a: 7 },
+        { q: 'x/4 + 2 = 6', a: 16 }, { q: '2x + 1 = 7', a: 3 }, { q: '4x − 8 = 0', a: 2 },
+        { q: '3x + 9 = 0', a: -3 }, { q: 'x/3 = 5', a: 15 }, { q: '7x − 14 = 0', a: 2 }, { q: '6x + 6 = 24', a: 3 },
+      ]
+      return cases.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 1), String(p.a - 1), String(p.a * 2)])].slice(0, 4)
+        return {
+          id: `leq-${i}`,
+          type: 'multiple-choice',
+          question: `Resuelve: ${p.q}`,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Despeja la x paso a paso, operando igual en ambos lados.',
+          explanation: `${p.q} → x = ${p.a}. Verifica: sustituye x = ${p.a} en la ecuación.`,
+          difficulty: 2,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'geometry-angles',
+    gradeLevel: 7,
+    title: 'Ángulos y Triángulos',
+    icon: '📐',
+    description: 'Tipos de ángulos y propiedades de triángulos',
+    orderIndex: 56,
+    type: 'geometry',
+    lessonSlides: [
+      { title: 'Tipos de ángulos', content: 'Agudo: < 90°\nRecto: = 90°\nObtuso: > 90°\nLlano: = 180°', visual: '45° | 90° | 135° | 180°' },
+      { title: 'Triángulos', content: 'La suma de ángulos internos de un triángulo es 180°.\nSi un ángulo es 90°, se llama triángulo rectángulo.', visual: 'α + β + γ = 180°' },
+    ],
+    tips: ['Ángulos suplementarios suman 180°', 'Ángulos complementarios suman 90°', 'En todo triángulo: suma de ángulos = 180°'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Un triángulo tiene ángulos de 60° y 80°. ¿Cuánto mide el tercer ángulo?', a: 40 },
+        { q: '¿Cuánto mide el ángulo suplementario de 65°?', a: 115 },
+        { q: '¿Cuánto mide el ángulo complementario de 30°?', a: 60 },
+        { q: 'Un triángulo rectángulo tiene un ángulo de 40°. ¿Cuánto mide el otro ángulo agudo?', a: 50 },
+        { q: '¿Cuánto mide el ángulo suplementario de 110°?', a: 70 },
+        { q: 'Un triángulo isósceles tiene ángulo base de 50°. ¿Cuánto mide el ángulo del vértice?', a: 80 },
+        { q: '¿Cuánto mide el ángulo complementario de 45°?', a: 45 },
+        { q: 'Un triángulo tiene ángulos de 45°, 45° y __°.', a: 90 },
+        { q: 'Dos ángulos de un triángulo suman 130°. ¿Cuánto mide el tercero?', a: 50 },
+        { q: '¿Cuánto mide el ángulo suplementario de 90°?', a: 90 },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 10), String(p.a - 10), String(180 - p.a)])].slice(0, 4)
+        return {
+          id: `angle-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Recuerda: suma de ángulos de un triángulo = 180°. Suplementarios suman 180°, complementarios suman 90°.',
+          explanation: `${p.q}\nRespuesta: ${p.a}°`,
+          difficulty: 2,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'stats-basic',
+    gradeLevel: 7,
+    title: 'Estadística Básica',
+    icon: '📈',
+    description: 'Media, mediana y moda',
+    orderIndex: 57,
+    type: 'statistics',
+    lessonSlides: [
+      { title: 'Media (promedio)', content: 'Suma todos los valores y divide por la cantidad.\nEj: (4+6+8)/3 = 6', visual: 'Media = Σx / n' },
+      { title: 'Mediana y moda', content: 'Mediana: valor del medio (ordenados)\nModa: el valor que más se repite', visual: '{1,2,3,4,5} → mediana = 3' },
+    ],
+    tips: ['Para la mediana, ordena primero los datos', 'Puede haber más de una moda', 'La media puede ser decimal'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Calcula la media de: 4, 8, 6, 2, 10', a: 6 },
+        { q: 'Calcula la mediana de: 3, 1, 5, 7, 2 (ordénalos primero)', a: 3 },
+        { q: '¿Cuál es la moda de: 2, 3, 3, 5, 6, 3, 8?', a: 3 },
+        { q: 'Media de: 15, 20, 25, 30, 10', a: 20 },
+        { q: 'Mediana de: 8, 4, 7, 3, 9', a: 7 },
+        { q: 'Un estudiante sacó 60, 70, 80, 90 en 4 pruebas. ¿Cuál es su promedio?', a: 75 },
+        { q: 'Moda de: 5, 5, 3, 2, 5, 1, 3', a: 5 },
+        { q: 'Media de: 100, 200, 300', a: 200 },
+        { q: 'Mediana de: 1, 2, 3, 4, 5, 6, 7', a: 4 },
+        { q: 'Media de los primeros 5 números naturales (1, 2, 3, 4, 5)', a: 3 },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 2), String(p.a - 1), String(p.a + 4)])].slice(0, 4)
+        return {
+          id: `stat-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Media = suma ÷ cantidad. Mediana = valor central (ordenados). Moda = el que más se repite.',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 2,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  // ── GRADE 8 ──────────────────────────────────
+  {
+    id: 'powers-roots',
+    gradeLevel: 8,
+    title: 'Potencias y Raíces',
+    icon: '√',
+    description: 'Potencias, raíces cuadradas y cúbicas',
+    orderIndex: 60,
+    type: 'powers',
+    lessonSlides: [
+      { title: 'Potencias', content: 'aⁿ = a × a × ... × a (n veces)\n2⁵ = 2 × 2 × 2 × 2 × 2 = 32', visual: '3² = 9 | 2³ = 8 | 4² = 16' },
+      { title: 'Raíces cuadradas', content: '√n es el número que elevado al cuadrado da n.\n√25 = 5 porque 5² = 25', visual: '√36 = 6 | √64 = 8 | √100 = 10' },
+    ],
+    tips: ['a⁰ = 1 para cualquier a ≠ 0', 'a¹ = a', 'La raíz cuadrada de un negativo no es real'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: '¿Cuánto es 2⁶?', a: 64 }, { q: '¿Cuánto es 3³?', a: 27 }, { q: '¿Cuánto es √81?', a: 9 },
+        { q: '¿Cuánto es 5²?', a: 25 }, { q: '¿Cuánto es √144?', a: 12 }, { q: '¿Cuánto es 4³?', a: 64 },
+        { q: '¿Cuánto es 2¹⁰?', a: 1024 }, { q: '¿Cuánto es √196?', a: 14 }, { q: '¿Cuánto es 7²?', a: 49 }, { q: '¿Cuánto es 10³?', a: 1000 },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 3), String(p.a - 2), String(Math.round(p.a / 2))])].slice(0, 4)
+        return {
+          id: `pow-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Potencia = multiplicación repetida. Raíz = ¿qué número al cuadrado da ese resultado?',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 2,
+          xpReward: 20,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'rational-numbers',
+    gradeLevel: 8,
+    title: 'Números Racionales',
+    icon: '½',
+    description: 'Fracciones, decimales y su relación',
+    orderIndex: 61,
+    type: 'fractions',
+    lessonSlides: [
+      { title: 'Números racionales', content: 'Un número racional es cualquier número que se puede escribir como fracción p/q donde q ≠ 0.\nIncluye enteros, fracciones y decimales finitos.', visual: '1/3 = 0,333... | 1/4 = 0,25' },
+      { title: 'Operaciones', content: 'Las cuatro operaciones con fracciones:\n+ : denominator común\n× : numerador × numerador', visual: '2/3 + 1/6 = 4/6 + 1/6 = 5/6' },
+    ],
+    tips: ['Todo entero es racional: 5 = 5/1', 'Fracciones equivalentes representan el mismo número', 'Para comparar: convierte a decimales o usa denominador común'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: '¿Cuánto es 3/4 + 1/2?', a: '5/4' }, { q: '¿Cuánto es 5/6 − 1/3?', a: '1/2' },
+        { q: '¿Cuánto es 2/3 × 3/4?', a: '1/2' }, { q: '¿Cuánto es 3/4 ÷ 3/8?', a: '2' },
+        { q: '¿Es racional 0,75? ¿Cómo se escribe como fracción?', a: '3/4', isText: true },
+        { q: '¿Cuánto es 7/8 − 1/4?', a: '5/8' }, { q: '¿Cuánto es 1/3 + 1/6 + 1/2?', a: '1' },
+        { q: '¿Cuánto es 4/5 × 5/8?', a: '1/2' }, { q: '¿Cuánto es 2 + 3/4?', a: '11/4' }, { q: '¿Cuánto es 5/3 − 2/9?', a: '13/9' },
+      ]
+      return problems.slice(0, count).map((p, i) => ({
+        id: `rat-${i}`,
+        type: 'write-answer',
+        question: p.q,
+        answer: String(p.a),
+        options: null,
+        hint: 'Para sumar/restar: busca denominador común. Para multiplicar: num × num, den × den.',
+        explanation: `${p.q}\nRespuesta: ${p.a}`,
+        difficulty: 3,
+        xpReward: 25,
+      }))
+    },
+  },
+
+  {
+    id: 'advanced-equations',
+    gradeLevel: 8,
+    title: 'Ecuaciones Avanzadas',
+    icon: '📝',
+    description: 'Ecuaciones con fracciones y paréntesis',
+    orderIndex: 62,
+    type: 'algebra',
+    lessonSlides: [
+      { title: 'Ecuaciones con fracciones', content: 'Para eliminar denominadores, multiplica todo por el mcm.\nx/3 + x/4 = 7 → ×12: 4x + 3x = 84 → x = 12', visual: 'Eliminar denominadores primero' },
+      { title: 'Ecuaciones con paréntesis', content: 'Distribuye primero:\n2(x + 3) = 14 → 2x + 6 = 14 → 2x = 8 → x = 4', visual: '2(x+3) → 2x + 6' },
+    ],
+    tips: ['Distribuye el paréntesis primero', 'Para fracciones: multiplica por el mcm', 'Siempre verifica la solución'],
+    generateExercises: (count = 10) => {
+      const cases = [
+        { q: '2(x + 3) = 14', a: 4 }, { q: '3(x − 2) = 9', a: 5 }, { q: '4(2x + 1) = 20', a: 2 },
+        { q: 'x/2 + 3 = 7', a: 8 }, { q: '(x + 1)/3 = 4', a: 11 }, { q: '2x/3 = 6', a: 9 },
+        { q: '5(x − 1) = 15', a: 4 }, { q: 'x/4 − 2 = 1', a: 12 }, { q: '3(x + 4) = 0', a: -4 }, { q: '2(3x − 1) = 16', a: 3 },
+      ]
+      return cases.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 2), String(p.a - 1), String(-p.a)])].slice(0, 4)
+        return {
+          id: `adveq-${i}`,
+          type: 'multiple-choice',
+          question: `Resuelve: ${p.q}`,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Si hay paréntesis: distribuye primero. Si hay fracciones: multiplica por el mcm.',
+          explanation: `${p.q}\nRespuesta: x = ${p.a}`,
+          difficulty: 3,
+          xpReward: 25,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'equation-systems',
+    gradeLevel: 8,
+    title: 'Sistemas de Ecuaciones',
+    icon: '🔀',
+    description: 'Dos ecuaciones, dos incógnitas',
+    orderIndex: 63,
+    type: 'algebra',
+    lessonSlides: [
+      { title: 'Sistema de 2×2', content: 'Dos ecuaciones con dos variables (x e y).\nMétodo de sustitución: despeja x de una y sustituye.', visual: 'x + y = 5\nx − y = 1 → x = 3, y = 2' },
+      { title: 'Método de suma', content: 'Suma o resta las ecuaciones para eliminar una variable.\n2x + y = 7\nx − y = 2 → 3x = 9 → x = 3', visual: 'Elimina una variable' },
+    ],
+    tips: ['Método de sustitución: despeja una variable', 'Método de suma: suma ecuaciones para eliminar variable', 'Verifica la solución en AMBAS ecuaciones'],
+    generateExercises: (count = 10) => {
+      const cases = [
+        { q: 'x + y = 5 y x − y = 1. ¿Cuánto vale x?', a: 3 },
+        { q: '2x + y = 7 y x − y = 2. ¿Cuánto vale x?', a: 3 },
+        { q: 'x + y = 10 y x − y = 4. ¿Cuánto vale y?', a: 3 },
+        { q: '3x + y = 11 y x + y = 5. ¿Cuánto vale x?', a: 3 },
+        { q: '2x − y = 3 y x + y = 6. ¿Cuánto vale x?', a: 3 },
+        { q: 'x + 2y = 8 y x − y = 2. ¿Cuánto vale y?', a: 2 },
+        { q: '4x + y = 9 y 2x + y = 5. ¿Cuánto vale x?', a: 2 },
+        { q: 'x + y = 12 y 2x − y = 6. ¿Cuánto vale x?', a: 6 },
+        { q: '3x + 2y = 13 y x + 2y = 7. ¿Cuánto vale x?', a: 3 },
+        { q: '5x − y = 14 y 3x + y = 10. ¿Cuánto vale x?', a: 3 },
+      ]
+      return cases.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 1), String(p.a - 1), String(p.a + 3)])].slice(0, 4)
+        return {
+          id: `sys-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Suma o resta las ecuaciones para eliminar una variable. Luego despeja la otra.',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 3,
+          xpReward: 30,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'functions-intro',
+    gradeLevel: 8,
+    title: 'Introducción a Funciones',
+    icon: 'f(x)',
+    description: 'Qué es una función y cómo evaluarla',
+    orderIndex: 64,
+    type: 'algebra',
+    lessonSlides: [
+      { title: '¿Qué es una función?', content: 'Una función f asigna a cada valor x exactamente un valor y.\nf(x) = 2x + 1 → f(3) = 2(3) + 1 = 7', visual: 'x → f(x) → y' },
+      { title: 'Dominio e imagen', content: 'Dominio: todos los valores posibles de x.\nImagen: todos los valores posibles de y (f(x)).', visual: 'f(x) = x² → imagen: y ≥ 0' },
+    ],
+    tips: ['f(x) es "f de x", el valor de y para ese x', 'Para evaluar: sustituye x por el número dado', 'Una función tiene solo un y para cada x'],
+    generateExercises: (count = 10) => {
+      const cases = [
+        { q: 'f(x) = 2x + 1. ¿Cuánto es f(3)?', a: 7 }, { q: 'f(x) = x². ¿Cuánto es f(5)?', a: 25 },
+        { q: 'f(x) = 3x − 4. ¿Cuánto es f(4)?', a: 8 }, { q: 'f(x) = x + 7. ¿Cuánto es f(−3)?', a: 4 },
+        { q: 'f(x) = 2x². ¿Cuánto es f(3)?', a: 18 }, { q: 'f(x) = x² − 1. ¿Cuánto es f(4)?', a: 15 },
+        { q: 'f(x) = 5x. ¿Cuánto es f(6)?', a: 30 }, { q: 'f(x) = x/2 + 3. ¿Cuánto es f(8)?', a: 7 },
+        { q: 'f(x) = x³. ¿Cuánto es f(2)?', a: 8 }, { q: 'f(x) = 4 − x. ¿Cuánto es f(10)?', a: -6 },
+      ]
+      return cases.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 3), String(p.a - 2), String(p.a * 2)])].slice(0, 4)
+        return {
+          id: `fn-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Sustituye x por el número dado y calcula.',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 3,
+          xpReward: 25,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'geometry-advanced',
+    gradeLevel: 8,
+    title: 'Geometría Avanzada',
+    icon: '🔷',
+    description: 'Teorema de Pitágoras y áreas avanzadas',
+    orderIndex: 65,
+    type: 'geometry',
+    lessonSlides: [
+      { title: 'Teorema de Pitágoras', content: 'En un triángulo rectángulo: a² + b² = c²\nc es la hipotenusa (el lado más largo).', visual: 'a² + b² = c² → 3² + 4² = 5²' },
+      { title: 'Áreas avanzadas', content: 'Rombo: (d₁ × d₂)/2\nTrapecio: (B + b) × h / 2\nPolígono regular: divide en triángulos', visual: 'Área rombo = d₁×d₂/2' },
+    ],
+    tips: ['Pitágoras solo funciona en triángulos rectángulos', 'La hipotenusa es siempre el lado más largo', 'Ternas pitagóricas: (3,4,5), (5,12,13), (8,15,17)'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Triángulo rectángulo con catetos 3 y 4. ¿Cuánto mide la hipotenusa?', a: 5 },
+        { q: 'Triángulo rectángulo con catetos 5 y 12. ¿Cuánto mide la hipotenusa?', a: 13 },
+        { q: 'Triángulo rectángulo con hipotenusa 10 y cateto 6. ¿Cuánto mide el otro cateto?', a: 8 },
+        { q: 'Área de un rombo con diagonales 8 y 6.', a: 24 },
+        { q: 'Área de un trapecio con bases 10 y 6, altura 4.', a: 32 },
+        { q: 'Triángulo rectángulo con catetos 9 y 12. ¿Cuánto mide la hipotenusa?', a: 15 },
+        { q: 'Área de un rombo con diagonales 10 y 4.', a: 20 },
+        { q: '¿Cuánto mide el cateto si la hipotenusa es 17 y un cateto es 8?', a: 15 },
+        { q: 'Área de trapecio con bases 12 y 8, altura 5.', a: 50 },
+        { q: 'Triángulo rectángulo: catetos 6 y 8. ¿Hipotenusa?', a: 10 },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 2), String(p.a - 1), String(p.a + 5)])].slice(0, 4)
+        return {
+          id: `geo-adv-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Pitágoras: c² = a² + b². Rombo: (d1×d2)/2. Trapecio: (B+b)×h/2.',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 3,
+          xpReward: 25,
+        }
+      })
+    },
+  },
+
+  {
+    id: 'probability',
+    gradeLevel: 8,
+    title: 'Probabilidad',
+    icon: '🎲',
+    description: 'Eventos, espacio muestral y probabilidad',
+    orderIndex: 66,
+    type: 'probability',
+    lessonSlides: [
+      { title: '¿Qué es la probabilidad?', content: 'La probabilidad mide la posibilidad de que ocurra un evento.\nP(A) = casos favorables / casos totales', visual: 'P(cara en moneda) = 1/2' },
+      { title: 'Propiedades', content: '0 ≤ P(A) ≤ 1\nP(imposible) = 0\nP(seguro) = 1\nP(A) + P(A\') = 1', visual: 'P(6 en dado) = 1/6' },
+    ],
+    tips: ['La probabilidad va de 0 (imposible) a 1 (seguro)', 'P(A) = favorables / posibles totales', 'El complemento: P(no A) = 1 − P(A)'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Al lanzar un dado, ¿cuál es la probabilidad de obtener un 4?', a: '1/6' },
+        { q: 'En una bolsa hay 3 rojas y 7 azules. ¿Probabilidad de sacar roja?', a: '3/10' },
+        { q: 'Al lanzar una moneda, ¿probabilidad de cara?', a: '1/2' },
+        { q: 'Un dado: ¿probabilidad de obtener número par?', a: '1/2' },
+        { q: 'Baraja de 52 cartas. ¿Probabilidad de sacar un as?', a: '1/13' },
+        { q: 'Hay 5 manzanas y 3 peras. ¿Probabilidad de elegir una pera?', a: '3/8' },
+        { q: 'Un dado: ¿probabilidad de obtener número mayor que 4?', a: '1/3' },
+        { q: 'Caja con 2 rojas, 3 verdes, 5 azules. ¿Probabilidad de verde?', a: '3/10' },
+        { q: 'Un dado: ¿probabilidad de obtener 1 o 2?', a: '1/3' },
+        { q: 'Moneda y dado. ¿Probabilidad de cara y número 3?', a: '1/12' },
+      ]
+      return problems.slice(0, count).map((p, i) => ({
+        id: `prob-${i}`,
+        type: 'write-answer',
+        question: p.q,
+        answer: String(p.a),
+        options: null,
+        hint: 'P(evento) = casos favorables / casos totales. Escribe tu respuesta como fracción.',
+        explanation: `${p.q}\nRespuesta: ${p.a}`,
+        difficulty: 3,
+        xpReward: 25,
+      }))
+    },
+  },
+
+  {
+    id: 'statistics-advanced',
+    gradeLevel: 8,
+    title: 'Estadística: Media y Moda',
+    icon: '📉',
+    description: 'Análisis estadístico avanzado y gráficos',
+    orderIndex: 67,
+    type: 'statistics',
+    lessonSlides: [
+      { title: 'Medidas de tendencia central', content: 'Media: promedio aritmético\nMediana: valor central\nModa: más frecuente\nRango: máximo − mínimo', visual: 'Media = Σx/n | Mediana = centro | Moda = más frecuente' },
+      { title: 'Desviación', content: 'El rango indica la dispersión de los datos.\nRango = valor máximo − valor mínimo\nDatos más agrupados = menor rango.', visual: 'Rango = Max − Min' },
+    ],
+    tips: ['Calcula siempre la media con todos los datos', 'Ordena antes de buscar la mediana', 'Puede no haber moda si todos son distintos'],
+    generateExercises: (count = 10) => {
+      const problems = [
+        { q: 'Datos: 4, 7, 2, 9, 3. ¿Cuál es el rango?', a: 7 },
+        { q: 'Notas: 50, 60, 70, 80, 90, 100. ¿Cuál es la media?', a: 75 },
+        { q: 'Datos: 3, 5, 5, 7, 9, 11. ¿Cuál es la mediana?', a: 6 },
+        { q: 'Datos: 2, 4, 4, 6, 8, 4. ¿Cuál es la moda?', a: 4 },
+        { q: 'Edades: 10, 12, 14, 16, 18. ¿Cuál es el rango?', a: 8 },
+        { q: 'Puntajes: 8, 6, 7, 9, 10. ¿Cuál es la media?', a: 8 },
+        { q: 'Datos: 1, 3, 5, 7, 9, 11, 13. ¿Cuál es la mediana?', a: 7 },
+        { q: 'Ventas diarias: 100, 150, 150, 200, 250. ¿Cuál es la moda?', a: 150 },
+        { q: 'Temperaturas: 20, 22, 25, 18, 30. ¿Cuál es el rango?', a: 12 },
+        { q: 'Datos: 10, 20, 30, 40, 50. ¿Cuál es la media?', a: 30 },
+      ]
+      return problems.slice(0, count).map((p, i) => {
+        const opts = [...new Set([String(p.a), String(p.a + 2), String(p.a - 2), String(p.a * 2)])].slice(0, 4)
+        return {
+          id: `stat-adv-${i}`,
+          type: 'multiple-choice',
+          question: p.q,
+          answer: String(p.a),
+          options: opts.sort(() => Math.random() - 0.5),
+          hint: 'Rango = máximo − mínimo. Media = suma/cantidad. Mediana = valor central (ordena primero).',
+          explanation: `${p.q}\nRespuesta: ${p.a}`,
+          difficulty: 3,
+          xpReward: 25,
+        }
+      })
+    },
+  },
 ]
 
 // ─────────────────────────────────────────────
@@ -1597,12 +2238,14 @@ export const GRADE_LABELS = {
   4: '4to Básico',
   5: '5to Básico',
   6: '6to Básico',
+  7: '7mo Básico',
+  8: '8vo Básico',
 }
 
-// Returns the correct Spanish ordinal label for a grade number (1–6)
+// Returns the correct Spanish ordinal label for a grade number (1–8)
 export function gradeLabel(g) {
-  const labels = ['1ro', '2do', '3ro', '4to', '5to', '6to']
-  return labels[g - 1] || `${g}to`
+  const labels = ['1ro', '2do', '3ro', '4to', '5to', '6to', '7mo', '8vo']
+  return labels[(g || 1) - 1] || `${g}to`
 }
 
 export const LEVEL_TITLES = [
@@ -1642,6 +2285,8 @@ export const ACHIEVEMENTS = [
   { id: 'grade4-complete', title: '4to Básico ⭐⭐⭐⭐', description: 'Completaste todo 4to básico', icon: '🎓', condition: 'complete_grade:4' },
   { id: 'grade5-complete', title: '5to Básico ⭐⭐⭐⭐⭐', description: 'Completaste todo 5to básico', icon: '🦋', condition: 'complete_grade:5' },
   { id: 'grade6-complete', title: '6to Básico ✨', description: 'Completaste todo 6to básico', icon: '🌟', condition: 'complete_grade:6' },
+  { id: 'grade7-complete', title: '7mo Básico ⭐', description: 'Completaste todo 7mo básico', icon: '⭐', condition: 'complete_grade:7' },
+  { id: 'grade8-complete', title: '8vo Básico 🎓', description: 'Completaste todo 8vo básico', icon: '🎓', condition: 'complete_grade:8' },
   { id: 'xp-100', title: 'Acumulador', description: 'Ganaste 100 puntos de XP', icon: '💰', condition: 'xp:100' },
   { id: 'xp-500', title: 'Millonario de XP', description: 'Ganaste 500 puntos de XP', icon: '💎', condition: 'xp:500' },
   { id: 'exercises-10', title: 'Practicador', description: 'Resolviste 10 ejercicios', icon: '✏️', condition: 'exercises:10' },
