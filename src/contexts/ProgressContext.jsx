@@ -50,14 +50,15 @@ export function ProgressProvider({ children }) {
   // Sync progress to/from Supabase when user changes
   useEffect(() => {
     if (!user) {
-      // Reset to defaults and clear stale local cache on logout
       setProgress({ ...DEFAULT_PROGRESS })
       localStorage.removeItem('mm_progress')
       setSynced(true)
       return
     }
     setSynced(false)
-    loadFromSupabase()
+    // Safety timeout: never block the app more than 6 seconds
+    const safetyTimer = setTimeout(() => setSynced(true), 6000)
+    loadFromSupabase().finally(() => clearTimeout(safetyTimer))
   }, [user?.id])
 
   async function loadFromSupabase() {
