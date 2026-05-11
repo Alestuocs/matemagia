@@ -1,0 +1,16 @@
+# gitleaks config — allowlist the Supabase URL and the *anon* key
+# (anon keys are by design public on the client; they enforce only via RLS).
+[allowlist]
+description = "Public/anon values that are safe to ship to the browser"
+regexTarget = "match"
+regexes = [
+  '''https://abdvoipoewiuneabxyqb\.supabase\.co''',
+  # Supabase anon JWT — public by design (RLS enforces access).
+  '''eyJhbGciOi[A-Za-z0-9_.\-]+''',
+]
+paths = [
+  '''\.env$''',
+  '''\.env\.example$''',
+  '''src/lib/supabase\.js''',
+  '''README\.md''',
+]

@@ -5,10 +5,25 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    /* Lock the layout to a phone-width column on desktop so the kid app
+       doesn't stretch awkwardly across a 4K monitor. */
+    background: linear-gradient(135deg, #ede9fe 0%, #fef9c3 100%);
+  }
   body {
     @apply font-fun bg-gradient-to-br from-purple-50 to-yellow-50 min-h-screen;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
+  }
+  #root {
+    max-width: 540px;
+    margin-inline: auto;
+    min-height: 100vh;
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0));
+    box-shadow: 0 0 24px rgba(139, 92, 246, 0.08);
+  }
+  @media (max-width: 540px) {
+    #root { box-shadow: none; }
   }
 
   * {

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!--
+  SPA fallback for GitHub Pages.
+  Rewrites the unknown path into a query string and bounces to /matemagia/
+  so the React Router can take over.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>MateMagia</title>
+  <script>
+    (function () {
+      var segmentCount = 1; // strip "/matemagia"
+      var l = window.location;
+      var basePath = l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/';
+      var redirect = l.protocol + '//' + l.hostname +
+        (l.port ? ':' + l.port : '') +
+        basePath + '?p=/' +
+        l.pathname.split('/').slice(1 + segmentCount).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash;
+      window.location.replace(redirect);
+    })();
+  </script>
+</head>
+<body></body>
+</html>

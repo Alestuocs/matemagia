@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import FeedbackPanel from './FeedbackPanel'
 import Celebration from '../ui/Celebration'
+import { useProgress } from '../../contexts/ProgressContext'
+import { speak, stopSpeaking, shouldAutoSpeak } from '../../lib/speech'
 
 export default function ExerciseEngine({ exercise, onCorrect, onWrong, onNext }) {
+  const { progress } = useProgress()
+  const autoSpeak = shouldAutoSpeak(progress.currentGrade || 1)
   const [selected, setSelected] = useState(null)
   const [inputVal, setInputVal] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -25,6 +29,10 @@ export default function ExerciseEngine({ exercise, onCorrect, onWrong, onNext })
     if (exercise.type === 'write-answer') {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
+    if (autoSpeak && exercise.question) {
+      setTimeout(() => speak(exercise.question), 250)
+    }
+    return () => stopSpeaking()
   }, [exercise.id])
 
   function checkAnswer(userAnswer) {
@@ -76,7 +84,15 @@ export default function ExerciseEngine({ exercise, onCorrect, onWrong, onNext })
 
       {/* Question */}
       <div className={`card border-2 border-magic-200 bg-gradient-to-br from-purple-50 to-white ${shake ? 'animate-shake' : ''}`}>
-        <div className="text-lg font-black text-gray-800 whitespace-pre-line mb-2">{question}</div>
+        <div className="flex items-start gap-2 mb-2">
+          <div className="text-lg font-black text-gray-800 whitespace-pre-line flex-1">{question}</div>
+          <button
+            onClick={() => speak(question)}
+            aria-label="Leer pregunta en voz alta"
+            title="Escuchar la pregunta"
+            className="shrink-0 w-9 h-9 rounded-full bg-magic-100 hover:bg-magic-200 text-magic-700 flex items-center justify-center text-lg active:scale-90 transition"
+          >🔊</button>
+        </div>
         {visualHint && (
           <div className="text-2xl mt-2 leading-relaxed break-words bg-white rounded-xl p-3 border border-magic-100">
             {visualHint}

@@ -1,0 +1,76 @@
+name: Weekly DB Backup
+
+on:
+  schedule:
+    - cron: '0 5 * * 0' # Sundays 05:00 UTC
+  workflow_dispatch: # manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: backups
+          # If branch doesn't exist yet, the next step creates it.
+        continue-on-error: true
+
+      - name: Ensure backups branch exists
+        run: |
+          git fetch origin backups || true
+          if ! git rev-parse --verify origin/backups >/dev/null 2>&1; then
+            git checkout --orphan backups
+            git rm -rf . 2>/dev/null || true
+            mkdir -p snapshots
+            echo "# MateMagia DB snapshots" > README.md
+            git add README.md
+            git -c user.email="actions@github.com" -c user.name="GH Actions" \
+              commit -m "init backups branch"
+            git push origin backups
+          fi
+          git checkout backups
+
+      - name: Install postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client gnupg
+
+      - name: Dump schema + data
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGHOST:     ${{ secrets.SUPABASE_DB_HOST }}
+          PGPORT:     ${{ secrets.SUPABASE_DB_PORT }}
+          PGUSER:     ${{ secrets.SUPABASE_DB_USER }}
+          PGDATABASE: ${{ secrets.SUPABASE_DB_NAME }}
+          BACKUP_GPG_RECIPIENT: ${{ secrets.BACKUP_GPG_RECIPIENT }}
+          BACKUP_GPG_PUBLIC_KEY: ${{ secrets.BACKUP_GPG_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          ts=$(date -u +%Y-%m-%dT%H%M%SZ)
+          mkdir -p snapshots
+          out="snapshots/matemagia-$ts.sql"
+
+          pg_dump --no-owner --no-privileges \
+            --schema=public --schema=auth \
+            --exclude-table-data='auth.audit_log_entries' \
+            "$PGDATABASE" > "$out"
+
+          # Encrypt at rest using a public GPG key (recipient holds private key).
+          if [ -n "${BACKUP_GPG_PUBLIC_KEY:-}" ]; then
+            echo "$BACKUP_GPG_PUBLIC_KEY" | gpg --import
+            gpg --trust-model always --yes --encrypt \
+                --recipient "$BACKUP_GPG_RECIPIENT" "$out"
+            rm "$out"
+          fi
+
+          # Retain only the 8 most recent files
+          ls -1t snapshots/* | tail -n +9 | xargs -r rm -f
+
+      - name: Commit snapshot
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GH Actions"
+          git add snapshots/
+          git commit -m "snapshot $(date -u +%Y-%m-%d)" || echo "no changes"
+          git push origin backups

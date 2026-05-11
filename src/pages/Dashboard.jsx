@@ -4,6 +4,7 @@ import { useProgress } from '../contexts/ProgressContext'
 import { CURRICULUM, getLevelInfo, ACHIEVEMENTS, gradeLabel } from '../lib/curriculum'
 import XPBar from '../components/ui/XPBar'
 import StreakBadge from '../components/ui/StreakBadge'
+import AnnualPrompts from '../components/ui/AnnualPrompts'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -47,6 +48,7 @@ export default function Dashboard() {
 
   return (
     <div className="pb-24 pt-2 px-4 max-w-lg mx-auto space-y-4">
+      <AnnualPrompts />
       {/* Header */}
       <div className="flex items-center justify-between py-3">
         <div>
