@@ -107,7 +107,7 @@ export default function AssessmentPage() {
       <div className="min-h-screen bg-gradient-to-br from-purple-100 to-yellow-50 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-4">
           <div className="text-center mb-6">
-            <img src="/matemagia/logo.png" alt="MateMagia" className="w-24 h-24 mx-auto mb-2 object-contain" />
+            <img src={import.meta.env.BASE_URL + 'logo.png'} alt="MateMagia" className="w-24 h-24 mx-auto mb-2 object-contain" />
             <h1 className="text-2xl font-black text-magic-700">¡Bienvenido/a!</h1>
             <p className="text-gray-500 font-semibold">¿Quién eres?</p>
           </div>

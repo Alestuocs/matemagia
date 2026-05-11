@@ -17,7 +17,7 @@ import ParentDashboard from './pages/ParentDashboard'
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-yellow-50">
     <div className="text-center animate-pulse">
-      <img src="/matemagia/logo.png" alt="MateMagia" className="w-24 h-24 mx-auto mb-3 object-contain" />
+      <img src={import.meta.env.BASE_URL + 'logo.png'} alt="MateMagia" className="w-24 h-24 mx-auto mb-3 object-contain" />
       <p className="font-black text-magic-600 text-xl">Cargando MateMagia...</p>
     </div>
   </div>
