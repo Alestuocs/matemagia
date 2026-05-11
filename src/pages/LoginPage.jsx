@@ -62,7 +62,7 @@ export default function LoginPage() {
       ))}
 
       <div className="relative z-10 w-full max-w-sm flex flex-col items-center">
-        <img src="/matemagia/logo.png" alt="MateMagia" className="w-36 h-36 object-contain mb-2 drop-shadow-2xl" style={{ animation: 'float 3s ease-in-out infinite' }} />
+        <img src={import.meta.env.BASE_URL + 'logo.png'} alt="MateMagia" className="w-36 h-36 object-contain mb-2 drop-shadow-2xl" style={{ animation: 'float 3s ease-in-out infinite' }} />
         <p className="text-purple-200 font-bold text-center text-sm mb-5">¡Aprende matemáticas de forma mágica! ✨</p>
 
         {tab === 'register' && (
