@@ -64,7 +64,7 @@ export function ProgressProvider({ children }) {
   async function loadFromSupabase() {
     setLoading(true)
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('user_progress')
         .select('*')
         .eq('user_id', user.id)
@@ -79,13 +79,20 @@ export function ProgressProvider({ children }) {
       }
 
       if (!data) {
-        // No row yet (trigger should have created one, but defensively):
-        // INSERT with safe defaults, NO blind copy of local state.
-        const { error: insErr } = await supabase
+        // No row yet — bootstrap one then re-read.
+        await supabase
           .from('user_progress')
-          .insert({ user_id: user.id })
-        if (insErr) console.warn('user_progress bootstrap insert failed:', insErr.message)
-        return
+          .upsert({ user_id: user.id }, { onConflict: 'user_id' })
+        const reread = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (!reread.data) {
+          console.warn('user_progress bootstrap failed; keeping in-memory state')
+          return
+        }
+        data = reread.data
       }
 
       const remote = {
@@ -153,17 +160,24 @@ export function ProgressProvider({ children }) {
     }
   }, [user])
 
-  // Check and update streak on each load
+  // Streak / daily-counter reset.
+  // CRITICAL: only run AFTER we've synced with Supabase, otherwise the
+  // closure captures the empty default state and we'd save zeros over the
+  // real progress. We also persist to DB so the new lastDate is durable.
   useEffect(() => {
+    if (!synced || !user) return
     const today = new Date().toDateString()
-    if (progress.lastDate !== today) {
-      const yesterday = new Date(Date.now() - 86400000).toDateString()
-      const newStreak = progress.lastDate === yesterday ? progress.streak : 0
-      const updated = { ...progress, lastDate: today, exercisesToday: 0, dailyGoalDone: 0, streak: newStreak }
-      setProgress(updated)
-      saveLocal(updated)
-    }
-  }, [])
+    if (progress.lastDate === today) return
+    const yesterday = new Date(Date.now() - 86400000).toDateString()
+    const newStreak = progress.lastDate === yesterday ? progress.streak : 0
+    persistProgress({
+      ...progress,
+      lastDate: today,
+      exercisesToday: 0,
+      dailyGoalDone: 0,
+      streak: newStreak,
+    })
+  }, [synced, user?.id])
 
   function saveAttempt(topicId, isCorrect, xpReward = 10) {
     const today = new Date().toDateString()
