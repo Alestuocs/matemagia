@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useProgress } from '../contexts/ProgressContext'
 import { getTopicById, CURRICULUM, ACHIEVEMENTS } from '../lib/curriculum'
@@ -44,6 +44,13 @@ export default function LessonPage() {
   const [showComplete, setShowComplete] = useState(false)
   const [newAchievements, setNewAchievements] = useState([])
   const [showWhiteboard, setShowWhiteboard] = useState(false)
+  const whiteboardRef = useRef(null)
+
+  // Clear the whiteboard automatically whenever the student moves on to a
+  // new exercise (after answering). Old scratch shouldn't pollute the next.
+  useEffect(() => {
+    whiteboardRef.current?.clear()
+  }, [exIndex, roundSeed])
 
   if (!topic) {
     return (
@@ -225,9 +232,9 @@ export default function LessonPage() {
               </button>
               {showWhiteboard && (
                 <div className="mt-2">
-                  <Whiteboard height={220} />
+                  <Whiteboard ref={whiteboardRef} height={220} />
                   <p className="text-xs text-gray-400 text-center mt-1">
-                    Tu pizarra es solo para que pienses. No se envía.
+                    Tu pizarra es solo para que pienses. Se limpia sola al pasar al siguiente ejercicio.
                   </p>
                 </div>
               )}
