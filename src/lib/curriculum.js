@@ -27,11 +27,23 @@ function makeOptions(correct, generator, wrongCount = 3) {
   return shuffle([...opts]).map(String)
 }
 
-// Helper: near options within range
+// Helper: near options within range.
+// Scales the wrong-answer spread based on magnitude of `correct`, so a
+// question answered with 33000 doesn't get options like 33001 / 32998.
 function nearOpts(correct, min, max) {
+  const absC = Math.abs(correct)
+  const baseStep = absC >= 10000 ? 1000
+                 : absC >= 1000  ? 100
+                 : absC >= 100   ? 10
+                 : 1
   return makeOptions(correct, () => {
-    const delta = Math.floor(Math.random() * 6) + 1
-    return Math.random() < 0.5 ? correct + delta : Math.max(min, correct - delta)
+    const k = Math.floor(Math.random() * 6) + 1
+    const delta = k * baseStep
+    const sign = Math.random() < 0.5 ? 1 : -1
+    let v = correct + sign * delta
+    if (typeof min === 'number') v = Math.max(min, v)
+    if (typeof max === 'number') v = Math.min(max, v)
+    return v
   })
 }
 
@@ -1512,13 +1524,16 @@ export const CURRICULUM = [
           }
         },
         () => {
-          const total = Math.floor(Math.random() * 40) + 20
-          const usado = Math.floor(Math.random() * total)
+          // Money in plain pesos so the option scale matches the question.
+          const total = (Math.floor(Math.random() * 40) + 20) * 1000
+          const usado = (Math.floor(Math.random() * 30) + 5) * 1000
+          const queda = total - usado
+          const fmt = (n) => n.toLocaleString('es-CL')
           return {
-            question: `Pedro tiene $${total}.000. Gasta $${usado}.000 en útiles. ¿Cuánto dinero le queda?`,
-            answer: total - usado,
+            question: `Pedro tiene $${fmt(total)}. Gasta $${fmt(usado)} en útiles. ¿Cuánto dinero le queda?`,
+            answer: queda,
             hint: '"le queda" → resta',
-            explanation: `Datos: tenía $${total}.000, gastó $${usado}.000.\nOperación: resta → ${total} - ${usado} = ${total - usado}`,
+            explanation: `Datos: tenía $${fmt(total)}, gastó $${fmt(usado)}.\nOperación: resta → $${fmt(total)} − $${fmt(usado)} = $${fmt(queda)}`,
           }
         },
         () => {

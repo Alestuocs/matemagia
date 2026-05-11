@@ -6,8 +6,10 @@ import TopBar from '../components/layout/TopBar'
 import LessonSlide from '../components/lessons/LessonSlide'
 import ExerciseEngine from '../components/lessons/ExerciseEngine'
 import Celebration from '../components/ui/Celebration'
+import Whiteboard from '../components/ui/Whiteboard'
 
-const EXERCISE_COUNT = 5
+const FULL_EXERCISE_COUNT = 10
+const REVIEW_EXERCISE_COUNT = 5
 
 export default function LessonPage() {
   const { topicId } = useParams()
@@ -16,17 +18,21 @@ export default function LessonPage() {
 
   const topic = getTopicById(topicId)
   const currentGrade = progress.currentGrade || 1
-  // Review mode: topics from a lower grade than the student's current grade
-  // skip the intro/lesson slides and go straight to a shorter practice set.
   const isReview = topic && topic.gradeLevel < currentGrade
-  const exerciseCount = isReview ? 3 : EXERCISE_COUNT
+  const exerciseCount = isReview ? REVIEW_EXERCISE_COUNT : FULL_EXERCISE_COUNT
+
   const [phase, setPhase] = useState(isReview ? 'practice' : 'intro')
   const [slideIndex, setSlideIndex] = useState(0)
-  const [exercises] = useState(() => topic ? topic.generateExercises(exerciseCount) : [])
+  // `roundSeed` reshuffles the exercise list when the kid taps "Practicar más".
+  const [roundSeed, setRoundSeed] = useState(0)
+  const [exercises, setExercises] = useState(() =>
+    topic ? topic.generateExercises(exerciseCount) : []
+  )
   const [exIndex, setExIndex] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
   const [showComplete, setShowComplete] = useState(false)
   const [newAchievements, setNewAchievements] = useState([])
+  const [showWhiteboard, setShowWhiteboard] = useState(false)
 
   if (!topic) {
     return (
@@ -54,7 +60,7 @@ export default function LessonPage() {
   const handleCorrect = useCallback((xp) => {
     const earned = saveAttempt(topicId, true, xp)
     setCorrectCount(c => c + 1)
-    if (earned.length > 0) setNewAchievements(prev => [...prev, ...earned])
+    if (earned?.length > 0) setNewAchievements(prev => [...prev, ...earned])
   }, [topicId, saveAttempt])
 
   const handleWrong = useCallback(() => {
@@ -65,8 +71,8 @@ export default function LessonPage() {
     if (exIndex + 1 < exercises.length) {
       setExIndex(i => i + 1)
     } else {
-      // All exercises done
-      const stars = correctCount >= 5 ? 3 : correctCount >= 3 ? 2 : 1
+      const accuracy = correctCount / exercises.length
+      const stars = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : 1
       const { newAchievements: earned } = completeTopic(topicId, stars)
       if (earned?.length > 0) setNewAchievements(prev => [...prev, ...earned])
       setShowComplete(true)
@@ -74,7 +80,33 @@ export default function LessonPage() {
     }
   }
 
-  const stars = correctCount >= 5 ? 3 : correctCount >= 3 ? 2 : 1
+  function practiceMore() {
+    // Generate a fresh batch and re-enter practice without the intro/slides.
+    setExercises(topic.generateExercises(exerciseCount))
+    setExIndex(0)
+    setCorrectCount(0)
+    setNewAchievements([])
+    setShowComplete(false)
+    setRoundSeed(s => s + 1)
+    setPhase('practice')
+  }
+
+  function goNextTopic() {
+    const idx = CURRICULUM.findIndex(t => t.id === topicId)
+    // Look forward for the next *unlocked* topic so we don't dump the kid
+    // in front of a locked one.
+    for (let j = idx + 1; j < CURRICULUM.length; j++) {
+      const t = CURRICULUM[j]
+      if (progress.unlockedTopics?.includes(t.id)) {
+        navigate(`/lesson/${t.id}`)
+        return
+      }
+    }
+    navigate('/map')
+  }
+
+  const accuracy = exercises.length ? correctCount / exercises.length : 0
+  const stars = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : 1
 
   return (
     <div className="min-h-screen pb-10">
@@ -93,7 +125,7 @@ export default function LessonPage() {
             🔁 Modo Repaso · {exerciseCount} ejercicios rápidos
           </div>
         )}
-        {/* Progress bar */}
+
         {phase === 'practice' && (
           <div className="mb-4">
             <div className="flex justify-between text-sm font-bold text-gray-500 mb-1">
@@ -103,13 +135,12 @@ export default function LessonPage() {
             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-magic-500 to-primary-500 rounded-full transition-all duration-500"
-                style={{ width: `${((exIndex) / exercises.length) * 100}%` }}
+                style={{ width: `${(exIndex / exercises.length) * 100}%` }}
               />
             </div>
           </div>
         )}
 
-        {/* Intro */}
         {phase === 'intro' && (
           <div className="animate-slide-up space-y-4">
             <div className="card bg-gradient-to-br from-magic-50 to-yellow-50 border-magic-200 text-center py-8">
@@ -139,7 +170,6 @@ export default function LessonPage() {
           </div>
         )}
 
-        {/* Lesson slides */}
         {phase === 'lesson' && slides[slideIndex] && (
           <LessonSlide
             slide={slides[slideIndex]}
@@ -148,18 +178,36 @@ export default function LessonPage() {
           />
         )}
 
-        {/* Practice */}
         {phase === 'practice' && currentExercise && (
-          <ExerciseEngine
-            key={`${exIndex}-${currentExercise.id}`}
-            exercise={currentExercise}
-            onCorrect={handleCorrect}
-            onWrong={handleWrong}
-            onNext={handleNext}
-          />
+          <>
+            <ExerciseEngine
+              key={`${roundSeed}-${exIndex}-${currentExercise.id}`}
+              exercise={currentExercise}
+              onCorrect={handleCorrect}
+              onWrong={handleWrong}
+              onNext={handleNext}
+            />
+
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowWhiteboard(v => !v)}
+                className="text-sm font-bold text-magic-600 hover:text-magic-800 active:scale-95 transition-all"
+              >
+                {showWhiteboard ? '🙈 Ocultar pizarra' : '📝 Mostrar pizarra para calcular'}
+              </button>
+              {showWhiteboard && (
+                <div className="mt-2">
+                  <Whiteboard height={220} />
+                  <p className="text-xs text-gray-400 text-center mt-1">
+                    Tu pizarra es solo para que pienses. No se envía.
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
-        {/* Complete */}
         {phase === 'complete' && (
           <div className="animate-pop space-y-4 text-center">
             <div className="card border-2 border-yellow-300 bg-yellow-50 py-8">
@@ -188,23 +236,20 @@ export default function LessonPage() {
               </div>
             )}
 
+            <button
+              type="button"
+              onClick={practiceMore}
+              className="btn-primary w-full text-lg"
+            >
+              🔁 Practicar más
+            </button>
+
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => navigate('/map')} className="btn-ghost">
+              <button type="button" onClick={() => navigate('/map')} className="btn-ghost">
                 🗺️ Mapa
               </button>
-              <button
-                onClick={() => {
-                  const idx = CURRICULUM.findIndex(t => t.id === topicId)
-                  const next = CURRICULUM[idx + 1]
-                  if (next && progress.unlockedTopics.includes(next.id)) {
-                    navigate(`/lesson/${next.id}`)
-                  } else {
-                    navigate('/map')
-                  }
-                }}
-                className="btn-primary"
-              >
-                Siguiente →
+              <button type="button" onClick={goNextTopic} className="btn-secondary">
+                Siguiente tema →
               </button>
             </div>
           </div>
