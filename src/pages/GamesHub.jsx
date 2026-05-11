@@ -598,7 +598,7 @@ export default function GamesHub() {
   return (
     <div className="pb-24">
       <TopBar title="Juegos 🎮" showBack={false} showXP />
-      <div className="px-4 max-w-lg mx-auto mt-4">
+      <div className="page-shell mt-4">
         {activeGame ? (
           <div className="card border-2 border-magic-200">
             {renderGame()}

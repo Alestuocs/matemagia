@@ -110,7 +110,7 @@ export default function ProfilePage() {
   return (
     <div className="pb-24">
       <TopBar title="Mi perfil" showBack={false} />
-      <div className="px-4 max-w-lg mx-auto mt-4 space-y-4">
+      <div className="page-shell mt-4 space-y-4">
 
         {/* Profile card */}
         <div className="card bg-gradient-to-br from-magic-50 to-purple-100 border-magic-200 text-center py-6">

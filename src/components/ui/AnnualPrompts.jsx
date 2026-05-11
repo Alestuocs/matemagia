@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useProgress } from '../../contexts/ProgressContext'
 import { sanitize } from '../../lib/utils'
-import { gradeLabel } from '../../lib/curriculum'
+import { gradeLabel, CURRICULUM } from '../../lib/curriculum'
 
 const DEC_PROMPT_KEY = 'mm_dec_prompt_dismissed'
 const NO_PARENT_KEY = 'mm_no_parent_dismissed'
@@ -35,7 +35,11 @@ export function AnnualGradePrompt({ onClose }) {
   const next = Math.min(8, (progress.currentGrade || 1) + 1)
 
   function handleConfirm() {
-    persistProgress({ ...progress, currentGrade: selected })
+    // Unlock all topics up to and including the new grade, so the kid sees
+    // their new full-curriculum and the prior grades as repaso.
+    const allUpToNewGrade = CURRICULUM.filter(t => t.gradeLevel <= selected).map(t => t.id)
+    const unlocked = [...new Set([...(progress.unlockedTopics || []), ...allUpToNewGrade])]
+    persistProgress({ ...progress, currentGrade: selected, unlockedTopics: unlocked })
     dismissDecember()
     onClose()
   }

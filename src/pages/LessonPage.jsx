@@ -15,9 +15,14 @@ export default function LessonPage() {
   const { progress, saveAttempt, completeTopic } = useProgress()
 
   const topic = getTopicById(topicId)
-  const [phase, setPhase] = useState('intro') // intro | lesson | practice | complete
+  const currentGrade = progress.currentGrade || 1
+  // Review mode: topics from a lower grade than the student's current grade
+  // skip the intro/lesson slides and go straight to a shorter practice set.
+  const isReview = topic && topic.gradeLevel < currentGrade
+  const exerciseCount = isReview ? 3 : EXERCISE_COUNT
+  const [phase, setPhase] = useState(isReview ? 'practice' : 'intro')
   const [slideIndex, setSlideIndex] = useState(0)
-  const [exercises] = useState(() => topic ? topic.generateExercises(EXERCISE_COUNT) : [])
+  const [exercises] = useState(() => topic ? topic.generateExercises(exerciseCount) : [])
   const [exIndex, setExIndex] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
   const [showComplete, setShowComplete] = useState(false)
@@ -82,7 +87,12 @@ export default function LessonPage() {
         onDone={() => setShowComplete(false)}
       />
 
-      <div className="px-4 max-w-lg mx-auto pt-4">
+      <div className="page-shell pt-4">
+        {isReview && (
+          <div className="mb-3 rounded-2xl bg-blue-50 border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 text-center">
+            🔁 Modo Repaso · {exerciseCount} ejercicios rápidos
+          </div>
+        )}
         {/* Progress bar */}
         {phase === 'practice' && (
           <div className="mb-4">
