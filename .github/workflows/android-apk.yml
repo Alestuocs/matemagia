@@ -27,20 +27,15 @@ jobs:
 
       - uses: android-actions/setup-android@v3
         with:
-          api-level: 34
+          cmdline-tools-version: 11076708
+          packages: 'platforms;android-34 build-tools;34.0.0'
 
       - run: npm ci
 
       - name: Build web bundle (Android target)
         env:
           BUILD_TARGET: android
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$VITE_SUPABASE_URL" ]; then
-            echo "VITE_SUPABASE_URL=https://abdvoipoewiuneabxyqb.supabase.co" > .env
-          fi
-          npx vite build
+        run: npx vite build
 
       - name: Initialize Android project if missing
         run: |
