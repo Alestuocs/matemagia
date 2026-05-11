@@ -54,7 +54,6 @@ export default function AssessmentPage() {
   const [answers, setAnswers] = useState([])
   const [selectedOpt, setSelectedOpt] = useState(null)
   const [showResult, setShowResult] = useState(false)
-  const [inviteCode] = useState(Math.random().toString(36).substring(2, 10).toUpperCase())
 
   const questions = ASSESSMENT_QUESTIONS.filter(q => q.grade <= (grade || 8))
 
@@ -176,14 +175,14 @@ export default function AssessmentPage() {
           <div className="text-7xl">👨‍👩‍👧</div>
           <div>
             <h1 className="text-2xl font-black text-gray-800">¡Perfil de Apoderado listo!</h1>
-            <p className="text-gray-500 font-semibold mt-1">Hola, {name}. Aquí está tu código de invitación:</p>
+            <p className="text-gray-500 font-semibold mt-1">Hola, {name}. En tu panel verás tu código de vinculación.</p>
           </div>
-          <div className="bg-white rounded-3xl p-6 shadow-md border border-green-200">
-            <p className="text-sm text-gray-500 mb-3">Comparte este código con tu hijo/a para vincular sus cuentas:</p>
-            <div className="text-3xl font-black tracking-widest text-green-700 font-mono bg-green-50 rounded-2xl py-4 px-6 mb-2">
-              {inviteCode}
-            </div>
-            <p className="text-xs text-gray-400">El estudiante puede ingresar este código en su perfil</p>
+          <div className="bg-white rounded-3xl p-5 shadow-md border border-green-200 text-left space-y-2">
+            <p className="font-bold text-green-700 text-sm">Tienes dos opciones para vincular a tu hijo/a:</p>
+            <ol className="text-sm text-gray-600 space-y-1 pl-1">
+              <li><span className="font-bold text-green-700">A.</span> Compartir <span className="font-bold">tu código</span> (lo verás en tu panel) y que tu hijo/a lo ingrese desde su perfil.</li>
+              <li><span className="font-bold text-green-700">B.</span> Pedir el <span className="font-bold">código de tu hijo/a</span> (lo ve en su perfil) e ingresarlo en tu panel.</li>
+            </ol>
           </div>
           <button onClick={handleParentFinish} className="btn-primary w-full text-lg">
             Ir a mi panel 🏠

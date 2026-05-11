@@ -1,14 +1,33 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useProgress } from '../contexts/ProgressContext'
 import { getLevelInfo, GRADE_LABELS, CURRICULUM } from '../lib/curriculum'
+import { supabase } from '../lib/supabase'
+import { sanitize } from '../lib/utils'
 import TopBar from '../components/layout/TopBar'
+
+const LINK_ERRORS = {
+  CODE_NOT_FOUND: 'No encontramos ningún apoderado con ese código.',
+  INVALID_CODE_FORMAT: 'El código debe tener el formato XXX-XXX.',
+  SAME_ROLE_CANNOT_LINK: 'Ese código pertenece a otra cuenta de estudiante.',
+  CANNOT_LINK_SELF: 'No puedes vincularte contigo mismo/a.',
+  NOT_AUTHENTICATED: 'Tu sesión expiró. Vuelve a iniciar sesión.',
+}
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth()
   const { progress, setDailyGoal, inviteCode } = useProgress()
   const [showGoalPicker, setShowGoalPicker] = useState(false)
   const [codeCopied, setCodeCopied] = useState(false)
+
+  // Linked parents state
+  const [linkedParents, setLinkedParents] = useState([])
+  const [loadingLinks, setLoadingLinks] = useState(true)
+  const [parentCodeInput, setParentCodeInput] = useState('')
+  const [showLinkForm, setShowLinkForm] = useState(false)
+  const [linkError, setLinkError] = useState('')
+  const [linkSuccess, setLinkSuccess] = useState('')
+  const [linking, setLinking] = useState(false)
 
   const { current, next, progress: levelProgress } = getLevelInfo(progress.xp)
   const name = progress.studentName || user?.user_metadata?.full_name || 'Estudiante'
@@ -31,6 +50,61 @@ export default function ProfilePage() {
       setCodeCopied(true)
       setTimeout(() => setCodeCopied(false), 2000)
     } catch (_) {}
+  }
+
+  useEffect(() => {
+    if (!user) return
+    loadLinkedParents()
+  }, [user])
+
+  async function loadLinkedParents() {
+    setLoadingLinks(true)
+    try {
+      const { data, error } = await supabase.rpc('my_linked_partners')
+      if (error) throw error
+      const parents = (data || []).filter(p => p.partner_role === 'parent')
+      setLinkedParents(parents)
+    } catch (e) {
+      console.warn('loadLinkedParents error', e)
+    } finally {
+      setLoadingLinks(false)
+    }
+  }
+
+  async function linkParent() {
+    setLinkError(''); setLinkSuccess('')
+    const code = sanitize.code(parentCodeInput)
+    if (!code || code.length < 6) {
+      setLinkError('Ingresa el código completo (formato XXX-XXX).')
+      return
+    }
+    setLinking(true)
+    try {
+      const { data, error } = await supabase.rpc('link_by_invite_code', { target_code: code })
+      if (error) {
+        const key = (error.message || '').match(/CODE_NOT_FOUND|INVALID_CODE_FORMAT|SAME_ROLE_CANNOT_LINK|CANNOT_LINK_SELF|NOT_AUTHENTICATED/)?.[0]
+        setLinkError(LINK_ERRORS[key] || 'No se pudo vincular. Verifica el código.')
+        return
+      }
+      setLinkSuccess(`¡Vinculado con ${data?.partner_name || 'tu apoderado'}! 🎉`)
+      setParentCodeInput('')
+      setShowLinkForm(false)
+      loadLinkedParents()
+    } catch (e) {
+      setLinkError('Error inesperado. Inténtalo de nuevo.')
+    } finally {
+      setLinking(false)
+    }
+  }
+
+  async function unlinkParent(parentId) {
+    if (!window.confirm('¿Quitar la vinculación con este apoderado?')) return
+    try {
+      await supabase.rpc('unlink_partner', { partner: parentId })
+      loadLinkedParents()
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   return (
@@ -204,6 +278,73 @@ export default function ProfilePage() {
             ) : (
               <div className="bg-white border border-gray-200 rounded-2xl p-4 text-center text-gray-400 text-sm">
                 Código asignado al iniciar sesión por primera vez.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Linked parents section (students only) */}
+        {isStudent && (
+          <div className="card border-2 border-green-200 bg-green-50">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">👨‍👩‍👧</span>
+              <h3 className="font-black text-gray-800 text-base">Mis apoderados</h3>
+            </div>
+
+            {loadingLinks ? (
+              <p className="text-gray-400 text-sm text-center py-3">Cargando...</p>
+            ) : linkedParents.length === 0 ? (
+              <p className="text-gray-500 text-sm mb-3">Aún no tienes apoderados vinculados.</p>
+            ) : (
+              <ul className="space-y-2 mb-3">
+                {linkedParents.map(p => (
+                  <li key={p.partner_id} className="bg-white border border-green-200 rounded-2xl p-3 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-lg">👤</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-gray-800 text-sm truncate">{p.partner_name || 'Apoderado'}</div>
+                      <div className="text-xs text-gray-400 truncate">{p.partner_email}</div>
+                    </div>
+                    <button onClick={() => unlinkParent(p.partner_id)}
+                      className="text-xs text-red-500 font-bold px-2 py-1 rounded-lg hover:bg-red-50">
+                      Quitar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {linkSuccess && (
+              <p className="text-green-700 font-bold text-sm text-center mb-2">✅ {linkSuccess}</p>
+            )}
+
+            {!showLinkForm ? (
+              <button onClick={() => { setShowLinkForm(true); setLinkError(''); setLinkSuccess('') }}
+                className="w-full bg-green-600 text-white rounded-2xl py-2.5 font-bold text-sm active:scale-95">
+                + Agregar apoderado por código
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">Pídele su código a tu papá/mamá (lo ve en su panel).</p>
+                <input
+                  value={parentCodeInput}
+                  onChange={e => setParentCodeInput(sanitize.code(e.target.value))}
+                  placeholder="Código del apoderado (XXX-XXX)"
+                  maxLength={7}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base font-mono tracking-widest uppercase text-center focus:outline-none focus:border-green-400"
+                />
+                {linkError && (
+                  <p className="text-red-500 text-sm font-semibold">{linkError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={linkParent} disabled={linking}
+                    className="flex-1 bg-green-600 text-white rounded-xl py-2.5 font-bold text-sm disabled:opacity-50 active:scale-95">
+                    {linking ? 'Verificando...' : 'Vincular'}
+                  </button>
+                  <button onClick={() => { setShowLinkForm(false); setLinkError('') }}
+                    className="px-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm">
+                    Cancelar
+                  </button>
+                </div>
               </div>
             )}
           </div>

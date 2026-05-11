@@ -28,7 +28,10 @@ export default function LoginPage() {
       }
     } catch (e) {
       const msg = e.message || ''
-      if (msg.includes('Invalid login')) setError('Correo o contraseña incorrectos.')
+      if (msg === 'BETA_NOT_ALLOWED') {
+        setError('MateMagia está en beta cerrada. Tu correo no está en la lista de acceso. Escribe a contacto@matemagia.app para solicitar una invitación.')
+      }
+      else if (msg.includes('Invalid login')) setError('Correo o contraseña incorrectos.')
       else if (msg.includes('already registered')) setError('Este correo ya está registrado. Inicia sesión.')
       else if (msg.includes('Email not confirmed')) setError('Confirma tu correo antes de iniciar sesión.')
       else setError('Error: ' + msg)
@@ -61,6 +64,12 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-sm flex flex-col items-center">
         <img src="/matemagia/logo.png" alt="MateMagia" className="w-36 h-36 object-contain mb-2 drop-shadow-2xl" style={{ animation: 'float 3s ease-in-out infinite' }} />
         <p className="text-purple-200 font-bold text-center text-sm mb-5">¡Aprende matemáticas de forma mágica! ✨</p>
+
+        {tab === 'register' && (
+          <div className="w-full mb-3 bg-yellow-400/20 border border-yellow-300/40 rounded-2xl px-4 py-2 text-xs font-bold text-yellow-100 text-center">
+            🚧 Beta cerrada: solo correos invitados pueden crear cuenta.
+          </div>
+        )}
 
         <div className="w-full bg-white/10 backdrop-blur-md rounded-3xl p-5 border border-white/20 shadow-2xl">
           {/* Tabs */}

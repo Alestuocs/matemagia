@@ -72,12 +72,30 @@ export function AuthProvider({ children }) {
   }
 
   async function signUpWithEmail(email, password, fullName) {
+    const normEmail = sanitizeEmail(email)
+
+    // Beta preflight check — returns FALSE if email not on allowlist
+    const { data: allowed, error: rpcError } = await supabase
+      .rpc('is_email_allowed', { check_email: normEmail })
+    if (rpcError) {
+      throw new Error('No se pudo verificar el correo. Intenta nuevamente.')
+    }
+    if (allowed === false) {
+      throw new Error('BETA_NOT_ALLOWED')
+    }
+
     const { data, error } = await supabase.auth.signUp({
-      email: sanitizeEmail(email),
+      email: normEmail,
       password,
       options: { data: { full_name: fullName } },
     })
-    if (error) throw error
+    if (error) {
+      // Server-side beta trigger throws this if preflight was bypassed
+      if (/BETA_NOT_ALLOWED/i.test(error.message)) {
+        throw new Error('BETA_NOT_ALLOWED')
+      }
+      throw error
+    }
     return data
   }
 
