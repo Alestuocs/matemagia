@@ -1,15 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 // Small finger-drawing canvas the student can use as a scratchpad while
 // solving an exercise. Works with touch + mouse, has pen / eraser / clear,
-// and is resilient to mobile pointer events.
-export default function Whiteboard({ height = 220 }) {
+// is resilient to mobile pointer events, and exposes an imperative
+// .clear() handle so the parent component can wipe it (e.g. when the
+// student selects an answer).
+const Whiteboard = forwardRef(function Whiteboard({ height = 220 }, ref) {
   const canvasRef = useRef(null)
   const ctxRef = useRef(null)
   const drawingRef = useRef(false)
   const lastRef = useRef({ x: 0, y: 0 })
   const [tool, setTool] = useState('pen')   // 'pen' | 'eraser'
   const [color, setColor] = useState('#6d28d9')
+
+  function clear() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.restore()
+  }
+
+  useImperativeHandle(ref, () => ({ clear }), [])
 
   // (Re)size the canvas to its container, accounting for device pixel ratio.
   useEffect(() => {
@@ -65,16 +79,6 @@ export default function Whiteboard({ height = 220 }) {
     drawingRef.current = false
   }
 
-  function clear() {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    ctx.save()
-    ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.restore()
-  }
-
   const colors = ['#6d28d9', '#dc2626', '#059669', '#1e40af', '#111827']
 
   return (
@@ -128,4 +132,6 @@ export default function Whiteboard({ height = 220 }) {
       />
     </div>
   )
-}
+})
+
+export default Whiteboard

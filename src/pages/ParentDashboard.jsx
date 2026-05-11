@@ -237,6 +237,11 @@ export default function ParentDashboard() {
 }
 
 function ChildCard({ progress: p, onSendReset, onUnlink }) {
+  const [stats, setStats] = useState(null)
+  const [statsErr, setStatsErr] = useState('')
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+
   if (!p) return null
 
   const completedCount = p.completed_topics?.length || 0
@@ -244,6 +249,21 @@ function ChildCard({ progress: p, onSendReset, onUnlink }) {
   const accuracy = p.exercises_total > 0 ? Math.round((p.correct_total / p.exercises_total) * 100) : 0
   const dailyPct = p.daily_goal > 0 ? Math.min(100, Math.round((p.daily_goal_done / p.daily_goal) * 100)) : 0
   const displayName = p.student_name || p.partner_name || 'Estudiante'
+
+  async function loadStats() {
+    setShowStats(v => !v)
+    if (stats) return
+    setStatsLoading(true); setStatsErr('')
+    try {
+      const { data, error } = await supabase.rpc('child_stats', { child: p.user_id })
+      if (error) throw error
+      setStats(data || {})
+    } catch (e) {
+      setStatsErr(e.message || 'Error al cargar estadísticas.')
+    } finally {
+      setStatsLoading(false)
+    }
+  }
 
   return (
     <div className="bg-white rounded-3xl p-5 shadow-sm border border-green-100">
@@ -301,6 +321,30 @@ function ChildCard({ progress: p, onSendReset, onUnlink }) {
         </div>
       </div>
 
+      <button
+        onClick={loadStats}
+        className="w-full mb-2 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-xl py-2 active:scale-95 transition-all"
+      >
+        {showStats ? '🙈 Ocultar estadísticas' : '📊 Ver estadísticas detalladas'}
+      </button>
+
+      {showStats && (
+        <div className="mb-3 rounded-2xl border border-green-100 bg-green-50/40 p-3 space-y-3">
+          {statsLoading && <p className="text-xs text-gray-500 text-center">Cargando datos desde la BD…</p>}
+          {statsErr && <p className="text-xs text-red-500 text-center">{statsErr}</p>}
+          {stats && (
+            <>
+              <ActivityHeatmap days={stats.last_14_days || []} />
+              <WorstTopics worst={stats.worst_topics || []} />
+              <TopicAccuracyList byTopic={stats.by_topic || {}} />
+              <p className="text-[10px] text-gray-400 text-center">
+                {stats.total_attempts || 0} intentos totales · {stats.correct_attempts || 0} correctos · datos en vivo desde la base.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-2">
         {p.child_email && (
           <button onClick={() => onSendReset(p.child_email)}
@@ -312,6 +356,117 @@ function ChildCard({ progress: p, onSendReset, onUnlink }) {
           className="px-3 text-xs text-red-500 border border-red-200 rounded-xl py-2 font-semibold hover:bg-red-50 active:scale-95 transition-all">
           Desvincular
         </button>
+      </div>
+    </div>
+  )
+}
+
+function ActivityHeatmap({ days }) {
+  // Build a fixed 14-day window (today and 13 previous). Missing days = 0.
+  const today = new Date()
+  const grid = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today.getTime() - (13 - i) * 86400000)
+    const iso = d.toISOString().slice(0, 10)
+    const hit = days.find(x => x.day === iso)
+    return {
+      iso,
+      label: d.getDate(),
+      attempts: hit?.attempts || 0,
+      correct: hit?.correct || 0,
+    }
+  })
+  const max = Math.max(1, ...grid.map(g => g.attempts))
+  return (
+    <div>
+      <h4 className="font-black text-xs text-gray-700 mb-2">📅 Actividad últimos 14 días</h4>
+      <div className="grid grid-cols-7 gap-1">
+        {grid.map(d => {
+          const intensity = d.attempts === 0 ? 0 : 0.2 + 0.8 * (d.attempts / max)
+          const bg = d.attempts === 0
+            ? 'rgba(0,0,0,0.06)'
+            : `rgba(34,197,94,${intensity.toFixed(2)})`
+          return (
+            <div
+              key={d.iso}
+              title={`${d.iso} · ${d.attempts} intentos (${d.correct} correctos)`}
+              className="aspect-square rounded-md text-[10px] flex items-center justify-center font-bold text-gray-700"
+              style={{ background: bg }}
+            >
+              {d.label}
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+        <span>menos</span>
+        <span>más actividad</span>
+      </div>
+    </div>
+  )
+}
+
+function WorstTopics({ worst }) {
+  if (!worst?.length) {
+    return (
+      <div className="bg-white rounded-xl p-3 text-center text-xs text-gray-400">
+        ✅ No hay temas con muchos errores. ¡Buen trabajo!
+      </div>
+    )
+  }
+  return (
+    <div>
+      <h4 className="font-black text-xs text-gray-700 mb-2">⚠️ Temas con más errores</h4>
+      <div className="space-y-1">
+        {worst.map(w => {
+          const t = CURRICULUM.find(t => t.id === w.topic_id)
+          return (
+            <div key={w.topic_id} className="bg-white rounded-xl p-2 flex items-center gap-2 text-xs">
+              <span className="text-base">{t?.icon || '📘'}</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-gray-700 truncate">{t?.title || w.topic_id}</div>
+                <div className="text-[10px] text-gray-400">
+                  {w.attempts} intentos · {w.wrong} errores · {w.accuracy}% acierto
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function TopicAccuracyList({ byTopic }) {
+  const entries = Object.entries(byTopic || {})
+  if (!entries.length) return null
+  // Sort by attempts desc, top 8
+  const top = entries
+    .map(([topicId, info]) => ({ topicId, ...info }))
+    .sort((a, b) => b.attempts - a.attempts)
+    .slice(0, 8)
+  return (
+    <div>
+      <h4 className="font-black text-xs text-gray-700 mb-2">🎯 Precisión por tema (top 8)</h4>
+      <div className="space-y-1">
+        {top.map(row => {
+          const t = CURRICULUM.find(t => t.id === row.topicId)
+          const acc = row.attempts > 0 ? Math.round((row.correct / row.attempts) * 100) : 0
+          const color = acc >= 80 ? 'bg-green-500' : acc >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+          return (
+            <div key={row.topicId} className="bg-white rounded-xl p-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="truncate font-bold text-gray-700 flex items-center gap-1">
+                  <span>{t?.icon || '📘'}</span>
+                  <span className="truncate">{t?.title || row.topicId}</span>
+                </span>
+                <span className="text-gray-500 text-[10px] shrink-0">{row.correct}/{row.attempts}</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
+                <div className={`h-full ${color}`} style={{ width: `${acc}%` }} />
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

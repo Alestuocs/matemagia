@@ -205,6 +205,22 @@ export function ProgressProvider({ children }) {
     const newAchievements = checkAchievements(updated)
     updated.achievements = [...new Set([...updated.achievements, ...newAchievements])]
     persistProgress(updated)
+
+    // Fire-and-forget granular attempt log (used by the parent dashboard).
+    if (user) {
+      supabase
+        .from('exercise_attempts')
+        .insert({
+          user_id: user.id,
+          topic_id: topicId,
+          is_correct: isCorrect,
+          xp_earned: isCorrect ? xpReward : 0,
+        })
+        .then(({ error }) => {
+          if (error) console.warn('attempt log failed:', error.message)
+        })
+    }
+
     return newAchievements
   }
 
