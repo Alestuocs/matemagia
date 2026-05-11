@@ -12,6 +12,7 @@ const DEFAULT_PROGRESS = {
   unlockedTopics: ['numbers-0-10'],
   completedTopics: [],
   topicStars: {},      // topicId → 1|2|3
+  topicLevels: {},     // topicId → 1..5 difficulty level
   exercisesTotal: 0,
   exercisesToday: 0,
   correctTotal: 0,
@@ -103,6 +104,7 @@ export function ProgressProvider({ children }) {
         unlockedTopics: data.unlocked_topics || ['numbers-0-10'],
         completedTopics: data.completed_topics || [],
         topicStars: data.topic_stars || {},
+        topicLevels: data.topic_levels || {},
         exercisesTotal: data.exercises_total || 0,
         exercisesToday: data.exercises_today || 0,
         correctTotal: data.correct_total || 0,
@@ -142,6 +144,7 @@ export function ProgressProvider({ children }) {
         unlocked_topics: newProgress.unlockedTopics,
         completed_topics: newProgress.completedTopics,
         topic_stars: newProgress.topicStars,
+        topic_levels: newProgress.topicLevels || {},
         exercises_total: newProgress.exercisesTotal,
         exercises_today: newProgress.exercisesToday,
         correct_total: newProgress.correctTotal,
@@ -305,6 +308,16 @@ export function ProgressProvider({ children }) {
     }
   }
 
+  function getTopicLevel(topicId) {
+    return (progress.topicLevels && progress.topicLevels[topicId]) || 1
+  }
+
+  function setTopicLevel(topicId, level) {
+    const clamped = Math.max(1, Math.min(5, Math.floor(level)))
+    const next = { ...(progress.topicLevels || {}), [topicId]: clamped }
+    persistProgress({ ...progress, topicLevels: next })
+  }
+
   const value = {
     progress,
     loading,
@@ -317,6 +330,8 @@ export function ProgressProvider({ children }) {
     saveExerciseHash,
     wasExerciseSeen,
     refreshProgress,
+    getTopicLevel,
+    setTopicLevel,
     inviteCode: progress.inviteCode,
   }
 

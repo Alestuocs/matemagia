@@ -44,6 +44,18 @@ jobs:
           fi
           npx cap sync android
 
+      - name: Generate Android launcher icon + splash
+        run: |
+          if [ -f resources/icon.png ]; then
+            npx @capacitor/assets generate --android \
+              --iconBackgroundColor "#8b5cf6" \
+              --iconBackgroundColorDark "#4c1d95" \
+              --splashBackgroundColor "#8b5cf6" \
+              --splashBackgroundColorDark "#4c1d95" || echo "asset generation failed (continuing)"
+          else
+            echo "resources/icon.png missing; skipping asset generation"
+          fi
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon

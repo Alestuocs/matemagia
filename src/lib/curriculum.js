@@ -285,24 +285,39 @@ export const CURRICULUM = [
       'Empieza siempre con el número mayor',
       'Dibuja puntos para ayudarte',
     ],
-    generateExercises: (count = 5) => {
+    generateExercises: (count = 5, level = 1) => {
+      // Level scales the range and operand count:
+      //   L1: a,b ≤ 9   (sums ≤ 20)
+      //   L2: a,b ≤ 15
+      //   L3: a,b ≤ 25
+      //   L4: a,b ≤ 40
+      //   L5: 3 términos a+b+c
+      const maxByLevel = [9, 15, 25, 40, 30][Math.max(0, Math.min(4, level - 1))]
+      const threeTerms = level >= 5
       return Array.from({ length: count }, (_, i) => {
-        const a = Math.floor(Math.random() * 10) + 1
-        const b = Math.floor(Math.random() * (20 - a)) + 1
-        const ans = a + b
+        const a = Math.floor(Math.random() * maxByLevel) + 1
+        const b = Math.floor(Math.random() * maxByLevel) + 1
+        const c = threeTerms ? Math.floor(Math.random() * maxByLevel) + 1 : 0
+        const ans = a + b + c
         const emoji = ['⭐', '🍎', '🐶', '🎈', '🌸'][i % 5]
         const type = i % 3 === 0 ? 'multiple-choice' : 'write-answer'
+        const question = threeTerms
+          ? `¿Cuánto es ${a} + ${b} + ${c}?`
+          : `¿Cuánto es ${a} + ${b}?`
+        const explanation = threeTerms
+          ? `Paso 1: ${a} + ${b} = ${a + b}\nPaso 2: ${a + b} + ${c} = ${ans}`
+          : `Paso 1: Comenzamos con ${a}\nPaso 2: Sumamos ${b} más\nPaso 3: ${a} + ${b} = ${ans}`
         return {
           id: `add-${i}-${Date.now()}`,
           type,
-          question: `¿Cuánto es ${a} + ${b}?`,
-          visualHint: `${emoji.repeat(a)} + ${emoji.repeat(b)}`,
+          question,
+          visualHint: a <= 12 && b <= 12 && !threeTerms ? `${emoji.repeat(a)} + ${emoji.repeat(b)}` : null,
           answer: ans,
-          options: type === 'multiple-choice' ? nearOpts(ans, 1, 20) : null,
-          hint: `Cuenta ${a} ${emoji}, luego agrega ${b} más`,
-          explanation: `Paso 1: Comenzamos con ${a}\nPaso 2: Contamos ${b} más: ${Array.from({ length: b }, (_, k) => a + k + 1).join(', ')}\nPaso 3: ${a} + ${b} = ${ans}`,
-          difficulty: 1,
-          xpReward: 10,
+          options: type === 'multiple-choice' ? nearOpts(ans, 1, ans + 20) : null,
+          hint: threeTerms ? 'Suma de a dos en dos: primero a+b, luego suma c' : `Empieza con ${Math.max(a, b)} y suma ${Math.min(a, b)} más`,
+          explanation,
+          difficulty: level,
+          xpReward: 10 + (level - 1) * 5,
         }
       })
     },
@@ -333,24 +348,32 @@ export const CURRICULUM = [
       'Puedes tachar objetos dibujados',
       'La resta siempre da un número menor',
     ],
-    generateExercises: (count = 5) => {
+    generateExercises: (count = 5, level = 1) => {
+      // L1: a≤20 sin reagrupar · L2: ≤30 · L3: ≤50 · L4: ≤80 · L5: forma desconocida (a - ? = b)
+      const maxA = [20, 30, 50, 80, 50][Math.max(0, Math.min(4, level - 1))]
+      const missingOperand = level >= 5
       return Array.from({ length: count }, (_, i) => {
-        const b = Math.floor(Math.random() * 9) + 1
-        const a = b + Math.floor(Math.random() * 11)
+        const b = Math.floor(Math.random() * Math.max(2, maxA / 2)) + 1
+        const a = b + Math.floor(Math.random() * (maxA - b)) + 1
         const ans = a - b
         const emoji = ['🎈', '🍊', '🌟', '🐱', '🍕'][i % 5]
         const type = i % 3 === 0 ? 'multiple-choice' : 'write-answer'
+        const question = missingOperand
+          ? `${a} - ? = ${ans}. ¿Qué número falta?`
+          : `¿Cuánto es ${a} - ${b}?`
+        const correctAnswer = missingOperand ? b : ans
         return {
           id: `sub-${i}-${Date.now()}`,
           type,
-          question: `¿Cuánto es ${a} - ${b}?`,
-          visualHint: `${emoji.repeat(a)} ✂️ ${b}`,
-          answer: ans,
-          options: type === 'multiple-choice' ? nearOpts(ans, 0, 20) : null,
+          question,
+          visualHint: a <= 15 && !missingOperand ? `${emoji.repeat(a)} ✂️ ${b}` : null,
+          answer: correctAnswer,
+          options: type === 'multiple-choice' ? nearOpts(correctAnswer, 0, maxA) : null,
           hint: `Empieza en ${a} y cuenta ${b} hacia atrás`,
           explanation: `Paso 1: Comenzamos con ${a}\nPaso 2: Quitamos ${b}: ${Array.from({ length: b }, (_, k) => a - k - 1).join(', ')}\nPaso 3: ${a} - ${b} = ${ans}`,
           difficulty: 1,
-          xpReward: 10,
+          xpReward: 10 + (level - 1) * 5,
+          difficulty: level,
         }
       })
     },
@@ -613,23 +636,37 @@ export const CURRICULUM = [
       'La tabla del 2 son los números pares',
       'La tabla del 5 siempre termina en 0 o 5',
     ],
-    generateExercises: (count = 5) => {
+    generateExercises: (count = 5, level = 1) => {
+      // L1: tablas del 1-3 · L2: 1-5 · L3: 1-5 con factor mayor · L4: factor falta · L5: cadena
+      const maxA = [3, 5, 5, 5, 5][Math.max(0, Math.min(4, level - 1))]
+      const maxB = [5, 10, 12, 12, 12][Math.max(0, Math.min(4, level - 1))]
+      const missingFactor = level >= 4
       return Array.from({ length: count }, (_, i) => {
-        const a = Math.floor(Math.random() * 5) + 1
-        const b = Math.floor(Math.random() * 10) + 1
+        const a = Math.floor(Math.random() * maxA) + 1
+        const b = Math.floor(Math.random() * maxB) + 1
         const ans = a * b
         const type = i % 2 === 0 ? 'multiple-choice' : 'write-answer'
+        const question = missingFactor
+          ? `${a} × ? = ${ans}. ¿Qué número falta?`
+          : `¿Cuánto es ${a} × ${b}?`
+        const correctAnswer = missingFactor ? b : ans
         return {
           id: `mult15-${i}-${Date.now()}`,
           type,
-          question: `¿Cuánto es ${a} × ${b}?`,
-          visualHint: `${a} grupos de ${b}: ${Array.from({ length: a }, () => '⭐'.repeat(b)).join(' | ')}`,
-          answer: ans,
-          options: type === 'multiple-choice' ? nearOpts(ans, 1, 50) : null,
-          hint: `${a} × ${b} = ${Array.from({ length: a }, () => b).join(' + ')} = ${ans}`,
-          explanation: `${a} × ${b} significa ${a} grupos de ${b}.\n${Array.from({ length: a }, () => b).join(' + ')} = ${ans}`,
-          difficulty: 2,
-          xpReward: 20,
+          question,
+          visualHint: !missingFactor && a <= 5 && b <= 10
+            ? `${a} grupos de ${b}: ${Array.from({ length: a }, () => '⭐'.repeat(b)).join(' | ')}`
+            : null,
+          answer: correctAnswer,
+          options: type === 'multiple-choice' ? nearOpts(correctAnswer, 1, maxA * maxB) : null,
+          hint: missingFactor
+            ? `Piensa: ¿${a} × cuánto da ${ans}?`
+            : `${a} × ${b} = ${Array.from({ length: a }, () => b).join(' + ')} = ${ans}`,
+          explanation: missingFactor
+            ? `Como ${a} × ${b} = ${ans}, el número que falta es ${b}.`
+            : `${a} × ${b} significa ${a} grupos de ${b}.\n${Array.from({ length: a }, () => b).join(' + ')} = ${ans}`,
+          difficulty: level,
+          xpReward: 15 + (level - 1) * 5,
         }
       })
     },
