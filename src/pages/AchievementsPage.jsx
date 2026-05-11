@@ -10,7 +10,7 @@ export default function AchievementsPage() {
   return (
     <div className="pb-24">
       <TopBar title="Logros 🏆" showBack={false} showXP />
-      <div className="px-4 max-w-lg mx-auto mt-4">
+      <div className="page-shell mt-4">
         <div className="card mb-4 text-center bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
           <div className="text-4xl mb-1">🏅</div>
           <div className="text-3xl font-black text-yellow-600">{earnedCount}/{ACHIEVEMENTS.length}</div>

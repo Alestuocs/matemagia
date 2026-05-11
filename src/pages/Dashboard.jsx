@@ -47,7 +47,7 @@ export default function Dashboard() {
   const { current } = getLevelInfo(progress.xp)
 
   return (
-    <div className="pb-24 pt-2 px-4 max-w-lg mx-auto space-y-4">
+    <div className="pb-24 pt-2 page-shell space-y-4">
       <AnnualPrompts />
       {/* Header */}
       <div className="flex items-center justify-between py-3">

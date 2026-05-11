@@ -36,7 +36,7 @@ export default function CurriculumMap() {
     <div className="pb-24">
       <TopBar title="Mapa de aprendizaje 🗺️" showBack={false} showXP />
 
-      <div className="px-4 max-w-lg mx-auto space-y-6 mt-4">
+      <div className="page-shell space-y-6 mt-4">
         {grades.map(grade => {
           const topics = CURRICULUM.filter(t => t.gradeLevel === grade)
           if (topics.length === 0) return null

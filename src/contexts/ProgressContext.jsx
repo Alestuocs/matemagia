@@ -68,57 +68,51 @@ export function ProgressProvider({ children }) {
         .from('user_progress')
         .select('*')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
-      if (data && !error) {
-        const remote = {
-          ...DEFAULT_PROGRESS,
-          xp: data.xp || 0,
-          streak: data.streak || 0,
-          lastStudyDate: data.last_study_date,
-          unlockedTopics: data.unlocked_topics || ['numbers-0-10'],
-          completedTopics: data.completed_topics || [],
-          topicStars: data.topic_stars || {},
-          exercisesTotal: data.exercises_total || 0,
-          exercisesToday: data.exercises_today || 0,
-          correctTotal: data.correct_total || 0,
-          dailyGoal: data.daily_goal || 5,
-          dailyGoalDone: data.daily_goal_done || 0,
-          achievements: data.achievements || [],
-          currentGrade: data.current_grade || 1,
-          studentName: data.student_name || '',
-          parentEmail: data.parent_email || '',
-          assessmentDone: data.assessment_done || false,
-          role: data.role || 'student',
-          inviteCode: data.invite_code || '',
-        }
-        setProgress(remote)
-        saveLocal(remote)
-      } else {
-        // Use local data, try to create remote entry
-        const local = loadLocal()
-        await supabase.from('user_progress').upsert({
-          user_id: user.id,
-          xp: local.xp,
-          streak: local.streak,
-          unlocked_topics: local.unlockedTopics,
-          completed_topics: local.completedTopics,
-          topic_stars: local.topicStars,
-          exercises_total: local.exercisesTotal,
-          exercises_today: local.exercisesToday,
-          correct_total: local.correctTotal,
-          daily_goal: local.dailyGoal,
-          daily_goal_done: local.dailyGoalDone,
-          achievements: local.achievements,
-          current_grade: local.currentGrade,
-          student_name: local.studentName,
-          parent_email: local.parentEmail,
-          assessment_done: local.assessmentDone,
-          role: local.role || 'student',
-        })
+      if (error) {
+        // RLS / network error — keep whatever local state we already have.
+        // CRITICAL: never write back to DB here, or we overwrite real progress
+        // with stale defaults on transient failures.
+        console.warn('user_progress read failed; keeping local cache:', error.message)
+        return
       }
+
+      if (!data) {
+        // No row yet (trigger should have created one, but defensively):
+        // INSERT with safe defaults, NO blind copy of local state.
+        const { error: insErr } = await supabase
+          .from('user_progress')
+          .insert({ user_id: user.id })
+        if (insErr) console.warn('user_progress bootstrap insert failed:', insErr.message)
+        return
+      }
+
+      const remote = {
+        ...DEFAULT_PROGRESS,
+        xp: data.xp || 0,
+        streak: data.streak || 0,
+        lastStudyDate: data.last_study_date,
+        unlockedTopics: data.unlocked_topics || ['numbers-0-10'],
+        completedTopics: data.completed_topics || [],
+        topicStars: data.topic_stars || {},
+        exercisesTotal: data.exercises_total || 0,
+        exercisesToday: data.exercises_today || 0,
+        correctTotal: data.correct_total || 0,
+        dailyGoal: data.daily_goal || 5,
+        dailyGoalDone: data.daily_goal_done || 0,
+        achievements: data.achievements || [],
+        currentGrade: data.current_grade || 1,
+        studentName: data.student_name || '',
+        parentEmail: data.parent_email || '',
+        assessmentDone: data.assessment_done || false,
+        role: data.role || 'student',
+        inviteCode: data.invite_code || '',
+      }
+      setProgress(remote)
+      saveLocal(remote)
     } catch (e) {
-      console.warn('Supabase load error, using local:', e)
+      console.warn('Supabase load error (caught):', e)
     } finally {
       setLoading(false)
       setSynced(true)
@@ -130,6 +124,9 @@ export function ProgressProvider({ children }) {
     saveLocal(newProgress)
     if (!user) return
     try {
+      // Explicit onConflict: 'user_id' — there's a UNIQUE constraint on
+      // user_progress.user_id and we want UPDATE-on-conflict, never INSERT
+      // a duplicate row.
       await supabase.from('user_progress').upsert({
         user_id: user.id,
         xp: newProgress.xp,
@@ -150,7 +147,7 @@ export function ProgressProvider({ children }) {
         assessment_done: newProgress.assessmentDone,
         role: newProgress.role || 'student',
         updated_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'user_id' })
     } catch (e) {
       console.warn('Supabase save error:', e)
     }
