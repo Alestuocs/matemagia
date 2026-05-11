@@ -10,23 +10,34 @@ import Whiteboard from '../components/ui/Whiteboard'
 
 const FULL_EXERCISE_COUNT = 10
 const REVIEW_EXERCISE_COUNT = 5
+const MAX_LEVEL = 5
+
+const LEVEL_LABELS = {
+  1: 'Nivel 1 · Iniciación',
+  2: 'Nivel 2 · Práctica',
+  3: 'Nivel 3 · Consolida',
+  4: 'Nivel 4 · Reto',
+  5: 'Nivel 5 · Maestría',
+}
 
 export default function LessonPage() {
   const { topicId } = useParams()
   const navigate = useNavigate()
-  const { progress, saveAttempt, completeTopic } = useProgress()
+  const { progress, saveAttempt, completeTopic, getTopicLevel, setTopicLevel } = useProgress()
 
   const topic = getTopicById(topicId)
   const currentGrade = progress.currentGrade || 1
   const isReview = topic && topic.gradeLevel < currentGrade
   const exerciseCount = isReview ? REVIEW_EXERCISE_COUNT : FULL_EXERCISE_COUNT
+  const initialLevel = isReview ? 1 : (getTopicLevel?.(topicId) || 1)
 
   const [phase, setPhase] = useState(isReview ? 'practice' : 'intro')
   const [slideIndex, setSlideIndex] = useState(0)
+  const [currentLevel, setCurrentLevel] = useState(initialLevel)
   // `roundSeed` reshuffles the exercise list when the kid taps "Practicar más".
   const [roundSeed, setRoundSeed] = useState(0)
   const [exercises, setExercises] = useState(() =>
-    topic ? topic.generateExercises(exerciseCount) : []
+    topic ? topic.generateExercises(exerciseCount, initialLevel) : []
   )
   const [exIndex, setExIndex] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
@@ -81,8 +92,14 @@ export default function LessonPage() {
   }
 
   function practiceMore() {
-    // Generate a fresh batch and re-enter practice without the intro/slides.
-    setExercises(topic.generateExercises(exerciseCount))
+    // Bump the difficulty (cap at MAX_LEVEL) and persist it so the next time
+    // the student enters this topic they pick up where they left off.
+    const accuracy = exercises.length ? correctCount / exercises.length : 0
+    const shouldBump = accuracy >= 0.7 && currentLevel < MAX_LEVEL
+    const nextLevel = shouldBump ? currentLevel + 1 : currentLevel
+    if (shouldBump && !isReview) setTopicLevel(topicId, nextLevel)
+    setCurrentLevel(nextLevel)
+    setExercises(topic.generateExercises(exerciseCount, nextLevel))
     setExIndex(0)
     setCorrectCount(0)
     setNewAchievements([])
@@ -120,9 +137,19 @@ export default function LessonPage() {
       />
 
       <div className="page-shell pt-4">
-        {isReview && (
+        {isReview ? (
           <div className="mb-3 rounded-2xl bg-blue-50 border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 text-center">
             🔁 Modo Repaso · {exerciseCount} ejercicios rápidos
+          </div>
+        ) : (
+          <div className="mb-3 rounded-2xl bg-magic-50 border border-magic-200 px-3 py-2 text-xs font-bold text-magic-700 text-center flex items-center justify-center gap-2">
+            <span>{LEVEL_LABELS[currentLevel] || `Nivel ${currentLevel}`}</span>
+            <span className="text-magic-400">·</span>
+            <span className="tracking-widest">
+              {Array.from({ length: MAX_LEVEL }).map((_, i) => (
+                <span key={i} className={i < currentLevel ? 'text-magic-500' : 'text-magic-200'}>●</span>
+              ))}
+            </span>
           </div>
         )}
 
@@ -241,7 +268,13 @@ export default function LessonPage() {
               onClick={practiceMore}
               className="btn-primary w-full text-lg"
             >
-              🔁 Practicar más
+              {(() => {
+                const a = exercises.length ? correctCount / exercises.length : 0
+                if (a >= 0.7 && currentLevel < MAX_LEVEL && !isReview) {
+                  return `🚀 Practicar más · Subir a Nivel ${currentLevel + 1}`
+                }
+                return '🔁 Practicar más'
+              })()}
             </button>
 
             <div className="grid grid-cols-2 gap-3">
