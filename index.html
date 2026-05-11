@@ -11,8 +11,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <title>MateMagia ✨</title>
-    <script type="module" crossorigin src="/matemagia/assets/index-Dfa5iiRS.js"></script>
-    <link rel="stylesheet" crossorigin href="/matemagia/assets/index-DkUi3pmn.css">
+    <script>
+      // SPA redirect helper: if we arrived from 404.html with ?p=/…, rewrite history.
+      (function () {
+        var l = window.location;
+        if (l.search.indexOf('?p=/') === 0 || l.search.indexOf('&p=/') > -1) {
+          var s = l.search.slice(1).split('&').reduce(function (acc, kv) {
+            var idx = kv.indexOf('=');
+            acc[kv.slice(0, idx)] = decodeURIComponent(kv.slice(idx + 1)).replace(/~and~/g, '&');
+            return acc;
+          }, {});
+          var path = (s.p || '/').replace(/^\/+/, '/');
+          var q = s.q ? '?' + s.q : '';
+          window.history.replaceState(null, '', l.pathname + path.replace(/^\//, '') + q + l.hash);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/matemagia/assets/index-DVmaBDE4.js"></script>
+    <link rel="stylesheet" crossorigin href="/matemagia/assets/index-HnW2WX9l.css">
   </head>
   <body>
     <div id="root"></div>
