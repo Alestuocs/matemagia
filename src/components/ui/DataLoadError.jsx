@@ -27,38 +27,53 @@ export default function DataLoadError() {
     window.location.replace(window.location.pathname)
   }
 
-  // Direct REST diagnostic — bypasses the supabase-js client so we see the
-  // raw HTTP status code from PostgREST. Helps figure out whether the
-  // failure is JWT (401), RLS (PGRST*), CORS, or network.
+  // Multi-probe diagnostic — pings several endpoints with explicit
+  // 6-second timeouts so we can distinguish:
+  //  · all probes timeout  → extension/firewall blocking *.supabase.co
+  //  · only REST fails     → CORS / RLS / JWT
+  //  · 401 on REST         → JWT expired
+  //  · 403 on REST         → RLS denies
+  //  · 404/[] on REST      → no row in user_progress
+  //  · control fails too   → no internet at all
   async function runDiagnostic() {
     setDiag({ status: 'running' })
-    try {
-      const url = import.meta.env.VITE_SUPABASE_URL
-        || 'https://abdvoipoewiuneabxyqb.supabase.co'
-      const apikey = import.meta.env.VITE_SUPABASE_ANON_KEY
-        || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiZHZvaXBvZXdpdW5lYWJ4eXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0Mjg5MTAsImV4cCI6MjA5NDAwNDkxMH0.a9CI3g1OcXyYswFCXhwnfrM4eJ4HAaJf6ZdaW_iadh0'
-      const { data: sessRes } = await supabase.auth.getSession()
-      const token = sessRes?.session?.access_token
-      const userId = sessRes?.session?.user?.id
-      const res = await fetch(
-        `${url}/rest/v1/user_progress?select=current_grade,xp,student_name&user_id=eq.${userId}`,
-        {
-          headers: {
-            apikey,
-            Authorization: token ? `Bearer ${token}` : `Bearer ${apikey}`,
-          },
-        }
-      )
-      const bodyText = await res.text()
-      setDiag({
-        status: res.status,
-        userId: userId || '(no session)',
-        body: bodyText.slice(0, 400),
-        tokenLen: token ? token.length : 0,
-      })
-    } catch (e) {
-      setDiag({ status: 'threw', error: e.message })
+
+    const url = import.meta.env.VITE_SUPABASE_URL
+      || 'https://abdvoipoewiuneabxyqb.supabase.co'
+    const apikey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiZHZvaXBvZXdpdW5lYWJ4eXFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0Mjg5MTAsImV4cCI6MjA5NDAwNDkxMH0.a9CI3g1OcXyYswFCXhwnfrM4eJ4HAaJf6ZdaW_iadh0'
+
+    async function probe(label, fetchUrl, init) {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 6000)
+      const t0 = performance.now()
+      try {
+        const r = await fetch(fetchUrl, { ...(init || {}), signal: ctrl.signal })
+        const body = await r.text().catch(() => '')
+        return { label, status: r.status, ms: Math.round(performance.now() - t0), body: body.slice(0, 200) }
+      } catch (e) {
+        return { label, status: e.name === 'AbortError' ? 'timeout(6s)' : 'threw', ms: Math.round(performance.now() - t0), error: String(e.message || e) }
+      } finally {
+        clearTimeout(timer)
+      }
     }
+
+    let userId = '(no session)'
+    let tokenLen = 0
+    try {
+      const { data: sessRes } = await supabase.auth.getSession()
+      userId = sessRes?.session?.user?.id || '(no session)'
+      tokenLen = sessRes?.session?.access_token?.length || 0
+    } catch (_) {}
+
+    const probes = await Promise.all([
+      probe('control', 'https://www.gstatic.com/generate_204'),
+      probe('supabase_auth_health', `${url}/auth/v1/health`, { headers: { apikey } }),
+      probe('supabase_rest_root', `${url}/rest/v1/`, { headers: { apikey } }),
+      probe('user_progress', `${url}/rest/v1/user_progress?select=current_grade,xp,student_name&user_id=eq.${userId}`, { headers: { apikey, Authorization: `Bearer ${apikey}` } }),
+    ])
+
+    setDiag({ userId, tokenLen, ua: navigator.userAgent.slice(0, 80), probes })
   }
 
   return (
@@ -111,11 +126,10 @@ export default function DataLoadError() {
               {JSON.stringify(diag, null, 2)}
             </pre>
             <p className="mt-2 text-[10px] text-gray-500 font-sans">
-              Compártele esto al equipo. Códigos comunes:
-              <br />· <b>401</b> = sesión expirada (cerrar sesión y entrar)
-              <br />· <b>403</b> = RLS bloquea
-              <br />· <b>404</b>/<b>406</b>/JSON vacío = no hay fila
-              <br />· <b>0</b>/CORS = red bloqueada
+              Compártele esto al equipo. Por probe:
+              <br />· <b>control timeout</b> = sin internet
+              <br />· solo supabase_* timeout = extensión/firewall bloquea supabase.co
+              <br />· user_progress <b>401</b> = JWT, <b>403</b> = RLS, <b>404/[]</b> = sin fila
             </p>
           </details>
         )}
