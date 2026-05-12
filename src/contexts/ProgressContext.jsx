@@ -105,22 +105,39 @@ export function ProgressProvider({ children }) {
     return loadFromSupabase()
   }
 
+  // Each Supabase call is wrapped in a race with a hard timeout so a
+  // hung network or dead JWT never locks the app on "Cargando…".
+  function raceTimeout(p, ms, label = 'op') {
+    return Promise.race([
+      p,
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error(`${label} timeout`)), ms
+      )),
+    ])
+  }
+
   async function readOnce() {
-    return supabase
-      .from('user_progress')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    return raceTimeout(
+      supabase.from('user_progress').select('*').eq('user_id', user.id).maybeSingle(),
+      5000,
+      'user_progress select'
+    )
   }
 
   async function readWithBackoff(maxAttempts = 3) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const { data, error } = await readOnce()
-      if (!error) return { data, error: null }
-      console.warn(`user_progress read attempt ${attempt + 1} failed:`, error.message)
+      try {
+        const { data, error } = await readOnce()
+        if (!error) return { data, error: null }
+        console.warn(`user_progress read attempt ${attempt + 1} failed:`, error.message)
+      } catch (e) {
+        console.warn(`user_progress read attempt ${attempt + 1} threw:`, e.message)
+      }
       // Try refreshing the JWT before the next attempt — many Supabase
       // read failures are silent JWT-expired errors.
-      try { await supabase.auth.refreshSession() } catch (_) {}
+      try {
+        await raceTimeout(supabase.auth.refreshSession(), 4000, 'refreshSession')
+      } catch (_) {}
       await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)))
     }
     return { data: null, error: new Error('All read attempts failed') }

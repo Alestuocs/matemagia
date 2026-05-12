@@ -12,20 +12,29 @@ export function AuthProvider({ children }) {
     // Get initial session with 8s timeout fallback
     const timeout = setTimeout(() => setLoading(false), 8000)
 
+    // Promise.race wrapper so a hung supabase call (refresh_token also
+    // expired, network black-hole) can't lock the app in "Cargando…".
+    const withTimeout = (p, ms, label = 'op') => Promise.race([
+      p,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms)),
+    ])
+
     ;(async () => {
       try {
-        // Hydrate session from storage first.
-        const { data: initial } = await supabase.auth.getSession()
+        const { data: initial } = await withTimeout(
+          supabase.auth.getSession(), 4000, 'getSession'
+        ).catch(() => ({ data: null }))
         const initialSession = initial?.session ?? null
-        // If there is a session, proactively refresh the JWT. Stale
-        // access tokens silently break RLS-protected reads (this is what
-        // made Grecia's data look like "0 XP / 1ro Básico" even though
-        // the DB had her real grade). If the refresh fails, fall back to
-        // whatever was in storage; the data-load-error UI will let the
-        // user retry or re-login.
+
         if (initialSession) {
+          // Proactively refresh, but never block the boot for more than
+          // 4s. If the refresh times out or the refresh_token is dead,
+          // we keep the cached session — the data-load-error UI will
+          // catch the bad-JWT case and offer "cerrar sesión".
           try {
-            const { data: refreshed } = await supabase.auth.refreshSession()
+            const { data: refreshed } = await withTimeout(
+              supabase.auth.refreshSession(), 4000, 'refreshSession'
+            )
             const fresh = refreshed?.session || initialSession
             setSession(fresh)
             setUser(fresh?.user ?? null)
