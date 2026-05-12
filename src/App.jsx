@@ -16,15 +16,7 @@ import ParentDashboard from './pages/ParentDashboard'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import PersistErrorToast from './components/ui/PersistErrorToast'
 import DataLoadError from './components/ui/DataLoadError'
-
-const LoadingScreen = ({ text = 'Cargando MateMagia...' }) => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-yellow-50">
-    <div className="text-center animate-pulse">
-      <img src={import.meta.env.BASE_URL + 'logo.png'} alt="MateMagia" className="w-24 h-24 mx-auto mb-3 object-contain" />
-      <p className="font-black text-magic-600 text-xl">{text}</p>
-    </div>
-  </div>
-)
+import LoadingScreen from './components/ui/LoadingScreen'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
