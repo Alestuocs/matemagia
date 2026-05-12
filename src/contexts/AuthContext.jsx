@@ -12,14 +12,38 @@ export function AuthProvider({ children }) {
     // Get initial session with 8s timeout fallback
     const timeout = setTimeout(() => setLoading(false), 8000)
 
-    supabase.auth.getSession().then(({ data }) => {
-      const session = data?.session ?? null
-      setSession(session)
-      setUser(session?.user ?? null)
-    }).catch(() => {}).finally(() => {
-      clearTimeout(timeout)
-      setLoading(false)
-    })
+    ;(async () => {
+      try {
+        // Hydrate session from storage first.
+        const { data: initial } = await supabase.auth.getSession()
+        const initialSession = initial?.session ?? null
+        // If there is a session, proactively refresh the JWT. Stale
+        // access tokens silently break RLS-protected reads (this is what
+        // made Grecia's data look like "0 XP / 1ro Básico" even though
+        // the DB had her real grade). If the refresh fails, fall back to
+        // whatever was in storage; the data-load-error UI will let the
+        // user retry or re-login.
+        if (initialSession) {
+          try {
+            const { data: refreshed } = await supabase.auth.refreshSession()
+            const fresh = refreshed?.session || initialSession
+            setSession(fresh)
+            setUser(fresh?.user ?? null)
+          } catch (_) {
+            setSession(initialSession)
+            setUser(initialSession?.user ?? null)
+          }
+        } else {
+          setSession(null)
+          setUser(null)
+        }
+      } catch (e) {
+        console.warn('auth bootstrap failed:', e)
+      } finally {
+        clearTimeout(timeout)
+        setLoading(false)
+      }
+    })()
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {

@@ -87,26 +87,52 @@ export function ProgressProvider({ children }) {
     setProgress(cached)
     setSynced(false)
     setDbConfirmed(false)
-    // Safety timeout bumped to 12s. Even if it fires, dbConfirmed stays
-    // false so navigation guards still know we don't trust the data.
-    const safetyTimer = setTimeout(() => setSynced(true), 12000)
+    // Safety timeout bumped to 20s for very slow networks. Even if it
+    // fires, dbConfirmed stays false so navigation guards refuse to
+    // render data-dependent screens.
+    const safetyTimer = setTimeout(() => setSynced(true), 20000)
     loadFromSupabase().finally(() => clearTimeout(safetyTimer))
   }, [user?.id])
+
+  // Manual retry — called by the "Reintentar" button on the data-load
+  // error screen.
+  async function retrySync() {
+    if (!user) return
+    setSynced(false)
+    setDbConfirmed(false)
+    // Try to refresh the JWT first in case the session went stale.
+    try { await supabase.auth.refreshSession() } catch (_) {}
+    return loadFromSupabase()
+  }
+
+  async function readOnce() {
+    return supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+  }
+
+  async function readWithBackoff(maxAttempts = 3) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const { data, error } = await readOnce()
+      if (!error) return { data, error: null }
+      console.warn(`user_progress read attempt ${attempt + 1} failed:`, error.message)
+      // Try refreshing the JWT before the next attempt — many Supabase
+      // read failures are silent JWT-expired errors.
+      try { await supabase.auth.refreshSession() } catch (_) {}
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)))
+    }
+    return { data: null, error: new Error('All read attempts failed') }
+  }
 
   async function loadFromSupabase() {
     setLoading(true)
     try {
-      let { data, error } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle()
+      let { data, error } = await readWithBackoff(3)
 
       if (error) {
-        // RLS / network error — keep whatever local state we already have.
-        // CRITICAL: never write back to DB here, or we overwrite real progress
-        // with stale defaults on transient failures.
-        console.warn('user_progress read failed; keeping local cache:', error.message)
+        console.warn('user_progress read failed after retries; keeping local cache')
         return
       }
 
@@ -115,11 +141,7 @@ export function ProgressProvider({ children }) {
         await supabase
           .from('user_progress')
           .upsert({ user_id: user.id }, { onConflict: 'user_id' })
-        const reread = await supabase
-          .from('user_progress')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle()
+        const reread = await readOnce()
         if (!reread.data) {
           console.warn('user_progress bootstrap failed; keeping in-memory state')
           return
@@ -427,6 +449,7 @@ export function ProgressProvider({ children }) {
     synced,
     dbConfirmed,
     persistError,
+    retrySync,
     saveAttempt,
     completeTopic,
     setProfile,
