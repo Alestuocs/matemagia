@@ -15,6 +15,7 @@ import PracticeMode from './pages/PracticeMode'
 import ParentDashboard from './pages/ParentDashboard'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import PersistErrorToast from './components/ui/PersistErrorToast'
+import DataLoadError from './components/ui/DataLoadError'
 
 const LoadingScreen = ({ text = 'Cargando MateMagia...' }) => (
   <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-yellow-50">
@@ -35,6 +36,12 @@ function AppRoutes() {
 
   // User is logged in but Supabase hasn't been consulted yet — wait.
   if (user && !synced) return <LoadingScreen text="Cargando tu perfil…" />
+
+  // User is authenticated and we tried to sync, but the DB never
+  // confirmed (read failed even after retries). Refuse to render a
+  // Dashboard with default zeros — that's how progress appears "lost"
+  // when actually it's the network/JWT. Show a retry screen instead.
+  if (user && !dbConfirmed) return <DataLoadError />
 
   const isLessonPage = location.pathname.startsWith('/lesson')
   const isParent = progress.role === 'parent'
