@@ -71,6 +71,7 @@ export function ProgressProvider({ children }) {
   // have flipped via the safety timer.
   const [dbConfirmed, setDbConfirmed] = useState(false)
   const [persistError, setPersistError] = useState(null)
+  const [loadError, setLoadError] = useState(null)
 
   // Sync progress to/from Supabase when user changes
   useEffect(() => {
@@ -125,22 +126,27 @@ export function ProgressProvider({ children }) {
   }
 
   async function readWithBackoff(maxAttempts = 3) {
+    let lastDetail = null
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const { data, error } = await readOnce()
         if (!error) return { data, error: null }
-        console.warn(`user_progress read attempt ${attempt + 1} failed:`, error.message)
+        lastDetail = `select: ${error.message || JSON.stringify(error)}`
+        console.warn(`user_progress read attempt ${attempt + 1} failed:`, error)
       } catch (e) {
-        console.warn(`user_progress read attempt ${attempt + 1} threw:`, e.message)
+        lastDetail = `select threw: ${e.message || e}`
+        console.warn(`user_progress read attempt ${attempt + 1} threw:`, e)
       }
       // Try refreshing the JWT before the next attempt — many Supabase
       // read failures are silent JWT-expired errors.
       try {
         await raceTimeout(supabase.auth.refreshSession(), 4000, 'refreshSession')
-      } catch (_) {}
+      } catch (e) {
+        lastDetail = (lastDetail || '') + ` | refresh: ${e.message || e}`
+      }
       await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)))
     }
-    return { data: null, error: new Error('All read attempts failed') }
+    return { data: null, error: new Error(lastDetail || 'unknown') }
   }
 
   async function loadFromSupabase() {
@@ -149,9 +155,12 @@ export function ProgressProvider({ children }) {
       let { data, error } = await readWithBackoff(3)
 
       if (error) {
-        console.warn('user_progress read failed after retries; keeping local cache')
+        const detail = error?.message || 'desconocido'
+        console.warn('user_progress read failed after retries:', detail)
+        setLoadError(detail)
         return
       }
+      setLoadError(null)
 
       if (!data) {
         // No row yet — bootstrap one then re-read.
@@ -466,6 +475,7 @@ export function ProgressProvider({ children }) {
     synced,
     dbConfirmed,
     persistError,
+    loadError,
     retrySync,
     saveAttempt,
     completeTopic,
