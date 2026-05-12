@@ -160,15 +160,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => navigate('/map')} className="btn-ghost flex items-center justify-center gap-2">
-          🗺️ Ver mapa
-        </button>
-        <button onClick={() => navigate('/games')} className="btn-ghost flex items-center justify-center gap-2">
-          🎮 Jugar
-        </button>
-      </div>
+      {/* Quick actions — duplicate of bottom nav was removed; the BottomNav
+         already has Mapa, Practicar, Tutor, Juegos. */}
     </div>
   )
 }

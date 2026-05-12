@@ -1171,6 +1171,16 @@ export function generateResponse(userMessage, topicContext = null, gradeLevel = 
   const arith = solveArithmetic(text, grade)
   if (arith) return fmtGrade(arith, type, grade)
 
+  // Aggressive arithmetic extraction: pull any "<num> <op> <num>" from
+  // the text and try to solve it. Handles things like "¿cómo resuelvo
+  // 12 + 5?" or "ayuda con 7*8".
+  const expr = text.match(/-?\d+(?:[.,]\d+)?\s*[+\-*x×÷/]\s*-?\d+(?:[.,]\d+)?/)
+  if (expr) {
+    const cleaned = expr[0].replace(/[x×]/g, '*').replace(/÷/g, '/').replace(/,/g, '.')
+    const arith2 = solveArithmetic(cleaned, grade)
+    if (arith2) return fmtGrade(arith2, 'arithmetic', grade)
+  }
+
   // Try all other resolvers in priority order
   for (const [resolverType, fn] of resolvers) {
     if (resolverType !== type) {
@@ -1179,7 +1189,65 @@ export function generateResponse(userMessage, topicContext = null, gradeLevel = 
     }
   }
 
-  return { message: topicExplanation(type, grade), type }
+  // Smarter fallback: instead of always returning the generic welcome
+  // message, try to be useful based on whatever the kid might be asking.
+  return { message: smartFallback(text, type, grade), type: 'help' }
+}
+
+// Last-resort fallback that gives the student a useful answer even when
+// no resolver matched. Tries to teach the most likely topic based on the
+// detected type, suggests concrete examples to type, and never repeats
+// the same generic welcome message.
+function smartFallback(text, type, grade) {
+  const lower = text.toLowerCase()
+
+  // Topic hints — match common Spanish keywords and teach a tiny lesson.
+  const topicHints = [
+    { keys: ['tabla', 'multiplicar', 'multiplica', 'veces'],
+      lesson: '✖️ **Multiplicar es sumar el mismo número varias veces.**\n\nEjemplo: 4 × 3 = 4 + 4 + 4 = 12.\n\nTrucos rápidos:\n• Tabla del 2: dobla el número (5 × 2 = 10)\n• Tabla del 5: termina en 0 o 5 (3 × 5 = 15)\n• Tabla del 10: agrega un cero (7 × 10 = 70)\n• Tabla del 9: los dígitos del resultado suman 9 (9 × 4 = 36, 3+6=9)\n\nEscríbeme un ejercicio como **"7 × 8"** y te muestro paso a paso.' },
+    { keys: ['suma', 'sumar', 'mas '],
+      lesson: '➕ **Sumar es juntar cantidades.**\n\nPara sumar 27 + 35:\n1. Suma las unidades: 7 + 5 = 12. Escribes el 2 y "llevas" 1.\n2. Suma las decenas: 2 + 3 + 1 (la que llevaste) = 6.\n3. Resultado: 62.\n\nEscríbeme un ejercicio como **"48 + 27"** y te lo resuelvo paso a paso.' },
+    { keys: ['resta', 'restar', 'menos '],
+      lesson: '➖ **Restar es quitar.**\n\nPara 52 − 27:\n1. Unidades: 2 − 7 no se puede, así que "pides prestado" 1 a las decenas.\n2. Ahora son 12 − 7 = 5.\n3. Decenas: 4 (después de prestar) − 2 = 2.\n4. Resultado: 25.\n\nEscríbeme **"73 − 28"** y te lo muestro paso a paso.' },
+    { keys: ['división', 'dividir', 'divid', 'reparti'],
+      lesson: '➗ **Dividir es repartir en partes iguales.**\n\nPara 24 ÷ 6:\n• Piensa: ¿cuántos grupos de 6 caben en 24?\n• 6 × 4 = 24, entonces 24 ÷ 6 = 4.\n\nEscríbeme **"56 ÷ 7"** y te explico.' },
+    { keys: ['fracción', 'fraccion', 'medio', 'tercio', 'cuarto'],
+      lesson: '🍕 **Una fracción es una parte de un entero.**\n\n3/4 = "tres cuartos" = una pizza cortada en 4 partes, tomo 3.\n\n• Numerador (arriba) = cuántas partes tomo.\n• Denominador (abajo) = en cuántas partes está cortado.\n\nEscríbeme **"1/2 + 1/4"** y te muestro cómo se suman.' },
+    { keys: ['decimal', 'coma', 'punto'],
+      lesson: '🔢 **Los decimales son números más pequeños que 1.**\n\n0,5 = 5 décimos = medio entero (igual que 1/2).\n0,25 = 25 centésimos = un cuarto.\n\nEscríbeme **"1,5 + 2,3"** y te lo resuelvo paso a paso.' },
+    { keys: ['porcentaje', 'porciento', '%', 'descuento'],
+      lesson: '💯 **El porcentaje es una parte de 100.**\n\n25% = 25 de cada 100 = 1/4 = 0,25.\n\nPara calcular 25% de 80:\n80 × 25 ÷ 100 = 20.\n\nEscríbeme **"15% de 200"** y te lo muestro.' },
+    { keys: ['área', 'area', 'perímetro', 'perimetro'],
+      lesson: '📐 **Área = el espacio que ocupa la figura.**\n**Perímetro = la suma de todos los lados.**\n\nRectángulo: área = base × altura, perímetro = 2 × (base + altura).\nCuadrado: área = lado × lado, perímetro = 4 × lado.\n\nEscríbeme **"área de un rectángulo de 5 por 3"** y te lo calculo.' },
+    { keys: ['ecuación', 'ecuacion', 'incógnita', 'incognita', ' x ', '=x'],
+      lesson: '🔍 **Una ecuación es una "balanza" donde hay un número escondido (x).**\n\nPara 2x + 3 = 11:\n1. Resta 3 a los dos lados: 2x = 8.\n2. Divide por 2: x = 4.\n\nEscríbeme **"resuelve 3x + 5 = 20"** y te lo muestro.' },
+  ]
+
+  for (const t of topicHints) {
+    if (t.keys.some(k => lower.includes(k))) {
+      return t.lesson + '\n\n— Tu Tutor MateMagia 🧙‍♂️'
+    }
+  }
+
+  // No keyword hit. Give a *useful* prompt list adapted to the grade.
+  const examplesByGrade = {
+    1: ['"3 + 4"', '"10 - 5"', '"contar hasta 20"'],
+    2: ['"23 + 15"', '"35 - 17"', '"5 × 3"'],
+    3: ['"7 × 8"', '"56 ÷ 7"', '"123 + 87"'],
+    4: ['"245 × 6"', '"1/2 + 1/4"', '"0,5 + 0,3"'],
+    5: ['"3/4 de 80"', '"25% de 120"', '"perímetro 5x3"'],
+    6: ['"15% de 200"', '"2x + 4 = 14"', '"área círculo radio 5"'],
+    7: ['"-5 + 8"', '"3x - 7 = 11"', '"3² + 4²"'],
+    8: ['"resolver x² = 49"', '"probabilidad dado par"', '"media de 4,6,8,10"'],
+  }
+  const exs = examplesByGrade[grade] || examplesByGrade[4]
+
+  return (
+    `Mmm, no entendí exactamente esa pregunta, pero **te puedo ayudar con cualquier cosa de matemáticas de 1° a 8° básico**. 🧙‍♂️\n\n` +
+    `Algunos ejemplos que puedes escribirme (apropiados para tu grado):\n` +
+    exs.map(e => `• ${e}`).join('\n') +
+    `\n\nO escribe palabras como **"explícame fracciones"**, **"ayuda con multiplicar"**, **"qué es un porcentaje"** y te enseño paso a paso.`
+  )
 }
 
 export function getWelcomeMessage(grade = 1) {

@@ -52,6 +52,22 @@ export default function LessonPage() {
     whiteboardRef.current?.clear()
   }, [exIndex, roundSeed])
 
+  // Reset all the lesson state when topicId changes. Without this, React
+  // Router reuses the same LessonPage instance for /lesson/a → /lesson/b
+  // and the "Tema completado" screen for `a` stays mounted for `b`.
+  useEffect(() => {
+    setPhase(isReview ? 'practice' : 'intro')
+    setSlideIndex(0)
+    setExercises(topic ? topic.generateExercises(exerciseCount, initialLevel) : [])
+    setExIndex(0)
+    setCorrectCount(0)
+    setShowComplete(false)
+    setNewAchievements([])
+    setCurrentLevel(initialLevel)
+    setRoundSeed(0)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicId])
+
   if (!topic) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -90,12 +106,29 @@ export default function LessonPage() {
       setExIndex(i => i + 1)
     } else {
       const accuracy = correctCount / exercises.length
+      // Pedagogical gate: only mark the topic completed if the student
+      // got MORE THAN HALF right. Otherwise show a "vamos a repasar"
+      // screen with fresh exercises so they can retry.
+      if (accuracy <= 0.5) {
+        setPhase('retry')
+        return
+      }
       const stars = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : 1
       const { newAchievements: earned } = completeTopic(topicId, stars)
       if (earned?.length > 0) setNewAchievements(prev => [...prev, ...earned])
       setShowComplete(true)
       setPhase('complete')
     }
+  }
+
+  function retryRound() {
+    // New batch of exercises at the SAME level (no level-up after fail).
+    setExercises(topic.generateExercises(exerciseCount, currentLevel))
+    setExIndex(0)
+    setCorrectCount(0)
+    setRoundSeed(s => s + 1)
+    setPhase('practice')
+    whiteboardRef.current?.clear()
   }
 
   function practiceMore() {
@@ -240,6 +273,40 @@ export default function LessonPage() {
               )}
             </div>
           </>
+        )}
+
+        {phase === 'retry' && (
+          <div className="animate-pop space-y-4 text-center">
+            <div className="card border-2 border-orange-300 bg-orange-50 py-8">
+              <div className="text-6xl mb-3">💪</div>
+              <h2 className="text-2xl font-black text-orange-700">¡Casi! Repasemos un poco.</h2>
+              <p className="text-gray-600 font-semibold mt-2">
+                Acertaste {correctCount} de {exercises.length}. Para completar el tema necesitas más de la mitad.
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                No te preocupes — vamos a hacer otros ejercicios distintos para que lo entiendas.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={retryRound}
+              className="btn-primary w-full text-lg"
+            >
+              🔁 Intentar de nuevo con otros ejercicios
+            </button>
+            {slides.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { setPhase('lesson'); setSlideIndex(0) }}
+                className="btn-ghost w-full"
+              >
+                📖 Volver a la explicación
+              </button>
+            )}
+            <button type="button" onClick={() => navigate('/map')} className="text-sm text-gray-400 font-semibold">
+              ← Volver al mapa
+            </button>
+          </div>
         )}
 
         {phase === 'complete' && (

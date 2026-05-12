@@ -5,6 +5,7 @@ import { getLevelInfo, GRADE_LABELS, CURRICULUM } from '../lib/curriculum'
 import { supabase } from '../lib/supabase'
 import { sanitize } from '../lib/utils'
 import TopBar from '../components/layout/TopBar'
+import LinkingCodes from '../components/ui/LinkingCodes'
 
 const LINK_ERRORS = {
   CODE_NOT_FOUND: 'No encontramos ningún apoderado con ese código.',
@@ -252,105 +253,14 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Invite code for students */}
-        {isStudent && (
-          <div className="card border-2 border-magic-200 bg-magic-50">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl">🔑</span>
-              <h3 className="font-black text-gray-800 text-base">Tu código de vinculación</h3>
-            </div>
-            <p className="text-gray-500 text-sm mb-4">
-              Comparte este código con tu apoderado para que pueda ver tu progreso.
-            </p>
+        {/* Discreet linking codes (both roles see this) */}
+        <LinkingCodes otherRoleLabel={isStudent ? 'apoderado' : 'estudiante'} />
 
-            {(inviteCode || progress.inviteCode) ? (
-              <div className="bg-white border-2 border-magic-300 rounded-2xl p-4 text-center">
-                <div className="text-3xl font-black tracking-widest text-magic-700 font-mono mb-3">
-                  {inviteCode || progress.inviteCode}
-                </div>
-                <button
-                  onClick={handleCopyCode}
-                  className="bg-magic-500 text-white rounded-xl px-5 py-2 font-bold text-sm active:scale-95 transition-all"
-                >
-                  {codeCopied ? '✅ Copiado' : '📋 Copiar'}
-                </button>
-              </div>
-            ) : (
-              <div className="bg-white border border-gray-200 rounded-2xl p-4 text-center text-gray-400 text-sm">
-                Código asignado al iniciar sesión por primera vez.
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Linked parents section (students only) */}
-        {isStudent && (
-          <div className="card border-2 border-green-200 bg-green-50">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl">👨‍👩‍👧</span>
-              <h3 className="font-black text-gray-800 text-base">Mis apoderados</h3>
-            </div>
-
-            {loadingLinks ? (
-              <p className="text-gray-400 text-sm text-center py-3">Cargando...</p>
-            ) : linkedParents.length === 0 ? (
-              <p className="text-gray-500 text-sm mb-3">Aún no tienes apoderados vinculados.</p>
-            ) : (
-              <ul className="space-y-2 mb-3">
-                {linkedParents.map(p => (
-                  <li key={p.partner_id} className="bg-white border border-green-200 rounded-2xl p-3 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-lg">👤</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-black text-gray-800 text-sm truncate">{p.partner_name || 'Apoderado'}</div>
-                      <div className="text-xs text-gray-400 truncate">{p.partner_email}</div>
-                    </div>
-                    <button onClick={() => unlinkParent(p.partner_id)}
-                      className="text-xs text-red-500 font-bold px-2 py-1 rounded-lg hover:bg-red-50">
-                      Quitar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {linkSuccess && (
-              <p className="text-green-700 font-bold text-sm text-center mb-2">✅ {linkSuccess}</p>
-            )}
-
-            {!showLinkForm ? (
-              <button onClick={() => { setShowLinkForm(true); setLinkError(''); setLinkSuccess('') }}
-                className="w-full bg-green-600 text-white rounded-2xl py-2.5 font-bold text-sm active:scale-95">
-                + Agregar apoderado por código
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-gray-500">Pídele su código a tu papá/mamá (lo ve en su panel).</p>
-                <input
-                  value={parentCodeInput}
-                  onChange={e => setParentCodeInput(sanitize.code(e.target.value))}
-                  placeholder="Código del apoderado (XXX-XXX)"
-                  maxLength={7}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base font-mono tracking-widest uppercase text-center focus:outline-none focus:border-green-400"
-                />
-                {linkError && (
-                  <p className="text-red-500 text-sm font-semibold">{linkError}</p>
-                )}
-                <div className="flex gap-2">
-                  <button onClick={linkParent} disabled={linking}
-                    className="flex-1 bg-green-600 text-white rounded-xl py-2.5 font-bold text-sm disabled:opacity-50 active:scale-95">
-                    {linking ? 'Verificando...' : 'Vincular'}
-                  </button>
-                  <button onClick={() => { setShowLinkForm(false); setLinkError('') }}
-                    className="px-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm">
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <button onClick={handleSignOut} className="btn-ghost w-full text-red-500 border-red-200">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="w-full bg-red-50 text-red-500 border border-red-200 rounded-2xl py-3 font-bold text-sm active:scale-95"
+        >
           Cerrar sesión
         </button>
       </div>

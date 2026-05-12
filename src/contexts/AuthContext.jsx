@@ -107,11 +107,19 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    // Clear local storage fallback data
-    localStorage.removeItem('mm_progress')
-    localStorage.removeItem('mm_profile')
+    // Always clear local state first so the UI flips back to login even if
+    // the network call below fails (e.g. JWT already expired, offline).
+    try { localStorage.removeItem('mm_progress') } catch (_) {}
+    try { localStorage.removeItem('mm_profile') } catch (_) {}
+    try {
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.warn('supabase signOut failed, forcing local logout:', e)
+    }
+    // Force-blank user immediately so AppRoutes redirects to LoginPage even
+    // if onAuthStateChange is slow.
+    setSession(null)
+    setUser(null)
   }
 
   const value = { user, session, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signOut }
