@@ -194,7 +194,6 @@ function ChildCard({ progress: p, onSendReset, onUnlink, onReload }) {
   const { recoverProgress, recovering } = useProgress()
   const [stats, setStats] = useState(null)
   const [statsErr, setStatsErr] = useState('')
-  const [statsLoading, setStatsLoading] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [recoverNote, setRecoverNote] = useState('')
 
@@ -206,20 +205,22 @@ function ChildCard({ progress: p, onSendReset, onUnlink, onReload }) {
   const dailyPct = p.daily_goal > 0 ? Math.min(100, Math.round((p.daily_goal_done / p.daily_goal) * 100)) : 0
   const displayName = p.student_name || p.partner_name || 'Estudiante'
 
-  async function loadStats() {
-    setShowStats(v => !v)
-    if (stats) return
-    setStatsLoading(true); setStatsErr('')
-    try {
-      const { data, error } = await supabase.rpc('child_stats', { child: p.user_id })
-      if (error) throw error
-      setStats(data || {})
-    } catch (e) {
-      setStatsErr(e.message || 'Error al cargar estadísticas.')
-    } finally {
-      setStatsLoading(false)
-    }
-  }
+  // Auto-load analytics so the parent sees the weekly insight WITHOUT
+  // having to click into details. Single round-trip per card.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabase.rpc('child_stats', { child: p.user_id })
+        if (cancelled) return
+        if (error) throw error
+        setStats(data || {})
+      } catch (e) {
+        if (!cancelled) setStatsErr(e.message || 'Error al cargar estadísticas.')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [p.user_id])
 
   return (
     <div className="bg-white rounded-3xl p-5 shadow-sm border border-green-100">
@@ -277,17 +278,19 @@ function ChildCard({ progress: p, onSendReset, onUnlink, onReload }) {
         </div>
       </div>
 
+      <WeeklyInsight stats={stats} displayName={displayName} />
+
       <button
-        onClick={loadStats}
+        onClick={() => setShowStats(v => !v)}
         className="w-full mb-2 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-xl py-2 active:scale-95 transition-all"
       >
-        {showStats ? '🙈 Ocultar estadísticas' : '📊 Ver estadísticas detalladas'}
+        {showStats ? '🙈 Ocultar detalles' : '📊 Ver detalles (14 días, acierto por tema)'}
       </button>
 
       {showStats && (
         <div className="mb-3 rounded-2xl border border-green-100 bg-green-50/40 p-3 space-y-3">
-          {statsLoading && <p className="text-xs text-gray-500 text-center">Cargando datos desde la BD…</p>}
           {statsErr && <p className="text-xs text-red-500 text-center">{statsErr}</p>}
+          {!stats && !statsErr && <p className="text-xs text-gray-500 text-center">Cargando…</p>}
           {stats && (
             <>
               <ActivityHeatmap days={stats.last_14_days || []} />
@@ -444,6 +447,101 @@ function TopicAccuracyList({ byTopic }) {
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// Compact "this week vs last week" insight shown above the details
+// toggle. Reads from the same child_stats payload, so no extra round-trip.
+function WeeklyInsight({ stats, displayName }) {
+  if (!stats) return null
+  const days = stats.last_14_days || []
+  // Build a Set keyed by ISO day for O(1) lookup.
+  const byDay = new Map(days.map(d => [d.day, d]))
+  const today = new Date()
+  // Santiago is UTC-3/4; this is a soft date — close enough for a weekly card.
+  function isoDaysAgo(n) {
+    const d = new Date(today.getTime() - n * 86400000)
+    return d.toISOString().slice(0, 10)
+  }
+  let thisWeek = { attempts: 0, correct: 0, activeDays: 0 }
+  let lastWeek = { attempts: 0, correct: 0, activeDays: 0 }
+  for (let i = 0; i < 7; i++) {
+    const d = byDay.get(isoDaysAgo(i))
+    if (d) {
+      thisWeek.attempts += d.attempts || 0
+      thisWeek.correct += d.correct || 0
+      if (d.attempts > 0) thisWeek.activeDays++
+    }
+  }
+  for (let i = 7; i < 14; i++) {
+    const d = byDay.get(isoDaysAgo(i))
+    if (d) {
+      lastWeek.attempts += d.attempts || 0
+      lastWeek.correct += d.correct || 0
+      if (d.attempts > 0) lastWeek.activeDays++
+    }
+  }
+
+  const acc = thisWeek.attempts > 0 ? Math.round((thisWeek.correct / thisWeek.attempts) * 100) : 0
+  const delta = thisWeek.attempts - lastWeek.attempts
+  const deltaPct = lastWeek.attempts > 0
+    ? Math.round((delta / lastWeek.attempts) * 100)
+    : (thisWeek.attempts > 0 ? 100 : 0)
+
+  const worst = (stats.worst_topics || [])[0]
+  const worstTopic = worst ? CURRICULUM.find(t => t.id === worst.topic_id) : null
+
+  // Headline message — picks the most useful narrative for the parent.
+  let headline = ''
+  let tone = 'neutral'
+  if (thisWeek.attempts === 0 && lastWeek.attempts > 0) {
+    headline = `${displayName} no practicó esta semana.`
+    tone = 'warn'
+  } else if (thisWeek.attempts === 0) {
+    headline = `Aún sin actividad esta semana.`
+    tone = 'neutral'
+  } else if (acc >= 85 && thisWeek.activeDays >= 4) {
+    headline = `¡Semana excelente! ${acc}% de aciertos en ${thisWeek.activeDays} días.`
+    tone = 'good'
+  } else if (delta > 0 && lastWeek.attempts > 0) {
+    headline = `Mejorando: ${deltaPct > 0 ? '+' : ''}${deltaPct}% de actividad vs la semana pasada.`
+    tone = 'good'
+  } else if (delta < 0 && lastWeek.attempts > 0) {
+    headline = `Bajó la actividad: ${deltaPct}% vs la semana pasada.`
+    tone = 'warn'
+  } else {
+    headline = `${thisWeek.attempts} ejercicios esta semana · ${acc}% acierto.`
+    tone = 'neutral'
+  }
+
+  const toneClasses = {
+    good: 'from-green-50 to-emerald-50 border-green-200 text-green-800',
+    warn: 'from-amber-50 to-orange-50 border-amber-200 text-amber-800',
+    neutral: 'from-purple-50 to-indigo-50 border-purple-200 text-purple-800',
+  }[tone]
+
+  return (
+    <div className={`mb-3 rounded-2xl border bg-gradient-to-br ${toneClasses} p-3`}>
+      <div className="flex items-start gap-2">
+        <span className="text-base shrink-0">💡</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-xs leading-tight">{headline}</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[11px] font-semibold opacity-80">
+            <span>📝 {thisWeek.attempts} ejercicios</span>
+            <span>🎯 {acc}% acierto</span>
+            <span>🗓 {thisWeek.activeDays}/7 días activa</span>
+            {lastWeek.attempts > 0 && (
+              <span>{delta >= 0 ? '↑' : '↓'} {Math.abs(deltaPct)}% vs semana pasada</span>
+            )}
+          </div>
+          {worstTopic && (
+            <p className="text-[11px] mt-1.5 opacity-90">
+              🆘 Necesita refuerzo: <b>{worstTopic.title}</b> ({worst.accuracy}% acierto)
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )
