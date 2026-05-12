@@ -107,7 +107,13 @@ export default function CurriculumMap() {
               <div className="space-y-2">
                 {topics.map((topic) => {
                   const isCompleted = progress.completedTopics.includes(topic.id)
-                  const isUnlocked = progress.unlockedTopics.includes(topic.id)
+                  // Permissive unlock: previous-grade topics are always
+                  // available as repaso (opcional), current-grade topics
+                  // and any explicitly-unlocked ones are open, the rest
+                  // stay locked.
+                  const isUnlocked = isPreviousGrade
+                    || isCurrentGrade
+                    || progress.unlockedTopics.includes(topic.id)
                   const stars = progress.topicStars[topic.id] || 0
                   const isCurrent = isUnlocked && !isCompleted
                   const isReview = isPreviousGrade

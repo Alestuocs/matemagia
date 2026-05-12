@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useProgress } from '../contexts/ProgressContext'
 import { CURRICULUM, gradeLabel } from '../lib/curriculum'
 import { sanitize } from '../lib/utils'
+import LinkingCodes from '../components/ui/LinkingCodes'
 
 const LINK_ERRORS = {
   CODE_NOT_FOUND: 'No encontramos ningún estudiante con ese código.',
@@ -144,29 +145,9 @@ export default function ParentDashboard() {
       )}
 
       <div className="px-4 py-4 space-y-4">
-        {/* My code card — parent's code that students can use to link */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border-2 border-green-200">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">🔑</span>
-            <h3 className="font-black text-gray-800">Tu código de apoderado</h3>
-          </div>
-          <p className="text-gray-500 text-sm mb-3">
-            Comparte este código con tu hijo/a. Desde su perfil, puede ingresarlo para vincular sus cuentas.
-          </p>
-          {myCode ? (
-            <div className="bg-green-50 border-2 border-green-300 rounded-2xl p-4 text-center">
-              <div className="text-3xl font-black tracking-widest text-green-700 font-mono mb-3">
-                {myCode}
-              </div>
-              <button onClick={copyMyCode}
-                className="bg-green-600 text-white rounded-xl px-5 py-2 font-bold text-sm active:scale-95 transition-all">
-                {codeCopied ? '✅ Copiado' : '📋 Copiar código'}
-              </button>
-            </div>
-          ) : (
-            <div className="text-center text-gray-400 py-3 text-sm">Cargando código...</div>
-          )}
-        </div>
+        {/* Discreet linking codes panel — shows both "my code" and
+            "add by code" in a compact layout. */}
+        <LinkingCodes otherRoleLabel="estudiante" />
 
         {/* Children list */}
         {loading ? (
@@ -187,48 +168,11 @@ export default function ParentDashboard() {
           ))
         )}
 
-        {linkSuccess && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 text-green-700 font-bold text-sm text-center">
-            ✅ {linkSuccess}
-          </div>
-        )}
-
-        {/* Add child by their code */}
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-green-100 space-y-3">
-          <h3 className="font-black text-gray-800">🔗 Vincular con código del estudiante</h3>
-          {!showLinkForm ? (
-            <button onClick={() => { setShowLinkForm(true); setLinkError(''); setLinkSuccess('') }}
-              className="w-full bg-green-600 text-white rounded-2xl py-3 font-black text-sm flex items-center justify-center gap-2 active:scale-95">
-              + Agregar estudiante por código
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-500">Pídele a tu hijo/a el código que aparece en su Perfil (formato XXX-XXX).</p>
-              <input
-                value={codeInput}
-                onChange={e => setCodeInput(sanitize.code(e.target.value))}
-                placeholder="Código del estudiante (ej: JV3-ZUN)"
-                maxLength={7}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base font-mono tracking-widest uppercase text-center focus:outline-none focus:border-green-400"
-              />
-              {linkError && (
-                <p className="text-red-500 text-sm font-semibold">{linkError}</p>
-              )}
-              <div className="flex gap-2">
-                <button onClick={linkChild} disabled={linking}
-                  className="flex-1 bg-green-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-50 active:scale-95">
-                  {linking ? 'Verificando...' : 'Vincular'}
-                </button>
-                <button onClick={() => { setShowLinkForm(false); setLinkError('') }}
-                  className="px-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <button onClick={signOut} className="w-full text-red-400 font-bold py-3 text-sm">
+        <button
+          type="button"
+          onClick={signOut}
+          className="w-full bg-red-50 text-red-500 border border-red-200 rounded-2xl py-3 font-bold text-sm active:scale-95"
+        >
           Cerrar sesión
         </button>
       </div>

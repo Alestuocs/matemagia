@@ -225,20 +225,45 @@ export function ProgressProvider({ children }) {
   }
 
   function completeTopic(topicId, stars = 3) {
+    const completedTopic = CURRICULUM.find(t => t.id === topicId)
     const topicIndex = CURRICULUM.findIndex(t => t.id === topicId)
     const nextTopic = CURRICULUM[topicIndex + 1]
+    const currentGrade = progress.currentGrade || 1
+
+    // Grade-gating rule:
+    //  - Next topic in the SAME grade  → always unlock.
+    //  - Next topic in a HIGHER grade  → only unlock if completing the
+    //    last topic of the student's current grade (i.e. the student
+    //    finished their grade and earned access to the next one).
+    let shouldUnlockNext = false
+    if (nextTopic) {
+      if (nextTopic.gradeLevel === completedTopic.gradeLevel) {
+        shouldUnlockNext = true
+      } else if (nextTopic.gradeLevel > completedTopic.gradeLevel) {
+        // Crossing a grade boundary. Only unlock if this is the last
+        // topic of the student's CURRENT grade (their next grade is
+        // earned by finishing this one).
+        if (completedTopic.gradeLevel === currentGrade) {
+          const lastOfGrade = CURRICULUM
+            .filter(t => t.gradeLevel === currentGrade)
+            .slice(-1)[0]
+          shouldUnlockNext = lastOfGrade && lastOfGrade.id === topicId
+        }
+      }
+    }
+
     const updated = {
       ...progress,
       completedTopics: [...new Set([...progress.completedTopics, topicId])],
       topicStars: { ...progress.topicStars, [topicId]: stars },
-      unlockedTopics: nextTopic
+      unlockedTopics: shouldUnlockNext
         ? [...new Set([...progress.unlockedTopics, nextTopic.id])]
         : progress.unlockedTopics,
     }
     const newAchievements = checkAchievements(updated)
     updated.achievements = [...new Set([...updated.achievements, ...newAchievements])]
     persistProgress(updated)
-    return { newAchievements, nextTopic }
+    return { newAchievements, nextTopic: shouldUnlockNext ? nextTopic : null }
   }
 
   function checkAchievements(p) {
