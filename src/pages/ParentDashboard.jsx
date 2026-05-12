@@ -174,7 +174,7 @@ export default function ParentDashboard() {
           </div>
         ) : (
           children.map(p => (
-            <ChildCard key={p.user_id} progress={p} onSendReset={sendPasswordReset} onUnlink={unlinkChild} />
+            <ChildCard key={p.user_id} progress={p} onSendReset={sendPasswordReset} onUnlink={unlinkChild} onReload={loadChildren} />
           ))
         )}
 
@@ -190,11 +190,13 @@ export default function ParentDashboard() {
   )
 }
 
-function ChildCard({ progress: p, onSendReset, onUnlink }) {
+function ChildCard({ progress: p, onSendReset, onUnlink, onReload }) {
+  const { recoverProgress, recovering } = useProgress()
   const [stats, setStats] = useState(null)
   const [statsErr, setStatsErr] = useState('')
   const [statsLoading, setStatsLoading] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [recoverNote, setRecoverNote] = useState('')
 
   if (!p) return null
 
@@ -300,10 +302,28 @@ function ChildCard({ progress: p, onSendReset, onUnlink }) {
       )}
 
       <div className="flex gap-2">
+        <button
+          onClick={async () => {
+            const r = await recoverProgress(p.user_id)
+            if (!r) return
+            if (r.error) setRecoverNote(`Error: ${r.error}`)
+            else if (r.recovered) {
+              setRecoverNote(`✅ Recuperados: ${r.after?.xp} XP · ${r.after?.exercises_total} ejercicios`)
+              if (onReload) onReload()
+            } else {
+              setRecoverNote('Sin cambios — el progreso ya estaba al día.')
+            }
+            setTimeout(() => setRecoverNote(''), 5000)
+          }}
+          disabled={recovering}
+          className="flex-1 text-xs text-purple-600 border border-purple-200 rounded-xl py-2 font-semibold hover:bg-purple-50 active:scale-95 transition-all disabled:opacity-60"
+        >
+          {recovering ? 'Recalculando…' : '🛟 Recalcular'}
+        </button>
         {p.child_email && (
           <button onClick={() => onSendReset(p.child_email)}
             className="flex-1 text-xs text-gray-500 border border-gray-200 rounded-xl py-2 font-semibold hover:bg-gray-50 active:scale-95 transition-all">
-            📧 Reset contraseña
+            📧 Reset
           </button>
         )}
         <button onClick={() => onUnlink(p.user_id)}
@@ -311,6 +331,9 @@ function ChildCard({ progress: p, onSendReset, onUnlink }) {
           Desvincular
         </button>
       </div>
+      {recoverNote && (
+        <p className="mt-2 text-[11px] text-gray-600 bg-gray-50 rounded-xl p-2">{recoverNote}</p>
+      )}
     </div>
   )
 }

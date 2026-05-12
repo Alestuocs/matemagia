@@ -17,7 +17,8 @@ const LINK_ERRORS = {
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth()
-  const { progress, setDailyGoal, inviteCode } = useProgress()
+  const { progress, setDailyGoal, inviteCode, recoverProgress, recovering } = useProgress()
+  const [recoverResult, setRecoverResult] = useState(null)
   const [showGoalPicker, setShowGoalPicker] = useState(false)
   const [codeCopied, setCodeCopied] = useState(false)
 
@@ -255,6 +256,40 @@ export default function ProfilePage() {
 
         {/* Discreet linking codes (both roles see this) */}
         <LinkingCodes otherRoleLabel={isStudent ? 'apoderado' : 'estudiante'} />
+
+        {isStudent && (
+          <div className="card">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-black text-gray-700 text-sm">🛟 Recuperar progreso</h3>
+                <p className="text-gray-400 text-xs">
+                  Si tus números se ven menores de lo que recuerdas, los recalculamos desde tu historial.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => setRecoverResult(await recoverProgress())}
+                disabled={recovering}
+                className="btn-ghost text-xs py-2 px-3 whitespace-nowrap disabled:opacity-60"
+              >
+                {recovering ? 'Recuperando…' : 'Recalcular'}
+              </button>
+            </div>
+            {recoverResult && (
+              <div className="mt-3 text-xs bg-gray-50 rounded-xl p-2 text-gray-600">
+                {recoverResult.error ? (
+                  <span className="text-red-500">No pudimos recuperar: {recoverResult.error}</span>
+                ) : recoverResult.recovered ? (
+                  <span className="text-green-700 font-bold">
+                    ✅ Recuperados: {recoverResult.after?.xp} XP · {recoverResult.after?.exercises_total} ejercicios
+                  </span>
+                ) : (
+                  <span>Tu progreso ya estaba completo. Nada que recuperar.</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <button
           type="button"

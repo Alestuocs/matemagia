@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
 import { CURRICULUM, ACHIEVEMENTS } from '../lib/curriculum'
@@ -72,6 +72,12 @@ export function ProgressProvider({ children }) {
   const [dbConfirmed, setDbConfirmed] = useState(false)
   const [persistError, setPersistError] = useState(null)
   const [loadError, setLoadError] = useState(null)
+  const [recovering, setRecovering] = useState(false)
+  // Ref mirror so useCallback closures see the latest value without
+  // having to rebuild on every flip (and so async effects can check it
+  // synchronously).
+  const dbConfirmedRef = useRef(false)
+  useEffect(() => { dbConfirmedRef.current = dbConfirmed }, [dbConfirmed])
 
   // Sync progress to/from Supabase when user changes
   useEffect(() => {
@@ -175,6 +181,39 @@ export function ProgressProvider({ children }) {
         data = reread.data
       }
 
+      // Auto-recover: if the stored aggregate looks suspiciously empty
+      // but there's at least one logged exercise attempt, we likely got
+      // overwritten by a stale persist (the pre-fix bug). Recompute from
+      // the event log before showing 0s to the user. GREATEST semantics
+      // on the RPC mean this is safe / idempotent.
+      const looksEmpty = (!data.xp || data.xp === 0)
+        && (!data.exercises_total || data.exercises_total === 0)
+        && (!data.completed_topics || data.completed_topics.length === 0)
+      if (looksEmpty) {
+        try {
+          const { count } = await raceTimeout(
+            supabase
+              .from('exercise_attempts')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id),
+            4000,
+            'attempts count'
+          )
+          if (count && count > 0) {
+            console.warn(`Auto-recovering progress: aggregate empty but ${count} attempts found`)
+            await raceTimeout(
+              supabase.rpc('recover_user_progress'),
+              6000,
+              'recover_user_progress'
+            )
+            const reread = await readOnce()
+            if (reread.data) data = reread.data
+          }
+        } catch (e) {
+          console.warn('auto-recover skipped:', e?.message || e)
+        }
+      }
+
       setDbConfirmed(true)
       const remote = {
         ...DEFAULT_PROGRESS,
@@ -212,6 +251,15 @@ export function ProgressProvider({ children }) {
     setProgress(newProgress)
     if (user?.id) saveLocal(user.id, newProgress)
     if (!user) return
+    // CRITICAL: do not write to DB before we've successfully READ from DB.
+    // Otherwise a default/empty state can overwrite real progress (this is
+    // exactly how Grecia's row got zeroed). Skip the upsert — the in-memory
+    // + local-cache update still happened, and the next persist after a
+    // successful sync will catch up.
+    if (!dbConfirmedRef.current) {
+      console.warn('persistProgress skipped: dbConfirmed=false (avoiding overwrite)')
+      return
+    }
     try {
       // Explicit onConflict: 'user_id' — there's a UNIQUE constraint on
       // user_progress.user_id and we want UPDATE-on-conflict, never INSERT
@@ -274,11 +322,12 @@ export function ProgressProvider({ children }) {
   }, [user])
 
   // Streak / daily-counter reset.
-  // CRITICAL: only run AFTER we've synced with Supabase, otherwise the
-  // closure captures the empty default state and we'd save zeros over the
-  // real progress. We also persist to DB so the new lastDate is durable.
+  // CRITICAL: gate on dbConfirmed (not synced). `synced` may flip via the
+  // 20s safety timer without a successful DB read; persisting with the
+  // default in-memory state in that case overwrites the real row with
+  // zeros (this is exactly how a user's progress got wiped).
   useEffect(() => {
-    if (!synced || !user) return
+    if (!dbConfirmed || !user) return
     const today = new Date().toDateString()
     if (progress.lastDate === today) return
     const yesterday = new Date(Date.now() - 86400000).toDateString()
@@ -290,7 +339,7 @@ export function ProgressProvider({ children }) {
       dailyGoalDone: 0,
       streak: newStreak,
     })
-  }, [synced, user?.id])
+  }, [dbConfirmed, user?.id])
 
   function saveAttempt(topicId, isCorrect, xpReward = 10) {
     const today = new Date().toDateString()
@@ -434,6 +483,33 @@ export function ProgressProvider({ children }) {
     await loadFromSupabase()
   }
 
+  // Manual recovery: rebuild aggregate from exercise_attempts (idempotent,
+  // GREATEST-based on the SQL side). Returns the JSON summary the RPC
+  // produced so callers can show "Recuperamos X XP, Y ejercicios".
+  async function recoverProgress(targetUserId = null) {
+    if (!user) return null
+    setRecovering(true)
+    try {
+      const args = targetUserId ? { target: targetUserId } : {}
+      const { data, error } = await raceTimeout(
+        supabase.rpc('recover_user_progress', args),
+        8000,
+        'recover_user_progress'
+      )
+      if (error) throw error
+      // If we recovered our own row, re-read to refresh local state.
+      if (!targetUserId || targetUserId === user.id) {
+        await loadFromSupabase()
+      }
+      return data
+    } catch (e) {
+      console.warn('recoverProgress failed:', e)
+      return { error: e?.message || String(e) }
+    } finally {
+      setRecovering(false)
+    }
+  }
+
   // Save exercise hash to localStorage to prevent repeats
   function saveExerciseHash(topicId, hash) {
     try {
@@ -476,6 +552,7 @@ export function ProgressProvider({ children }) {
     dbConfirmed,
     persistError,
     loadError,
+    recovering,
     retrySync,
     saveAttempt,
     completeTopic,
@@ -485,6 +562,7 @@ export function ProgressProvider({ children }) {
     saveExerciseHash,
     wasExerciseSeen,
     refreshProgress,
+    recoverProgress,
     getTopicLevel,
     setTopicLevel,
     inviteCode: progress.inviteCode,
