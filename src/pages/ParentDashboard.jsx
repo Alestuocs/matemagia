@@ -132,9 +132,19 @@ export default function ParentDashboard() {
             <p className="text-green-200 font-semibold text-sm">Panel de Apoderado</p>
             <h1 className="text-2xl font-black text-white">¡Hola, {parentName}! 👨‍👩‍👧</h1>
           </div>
-          {user?.user_metadata?.avatar_url && (
-            <img src={user.user_metadata.avatar_url} alt="avatar" className="w-12 h-12 rounded-full border-2 border-white" />
-          )}
+          <div className="flex items-center gap-2">
+            {user?.user_metadata?.avatar_url && (
+              <img src={user.user_metadata.avatar_url} alt="avatar" className="w-10 h-10 rounded-full border-2 border-white" />
+            )}
+            <button
+              type="button"
+              onClick={async () => { try { await signOut() } catch (_) {} }}
+              className="bg-white/15 hover:bg-white/25 border border-white/30 text-white text-xs font-bold rounded-xl px-3 py-2 active:scale-95 transition"
+              title="Cerrar sesión"
+            >
+              🚪
+            </button>
+          </div>
         </div>
       </div>
 

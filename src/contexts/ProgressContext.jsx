@@ -28,37 +28,68 @@ const DEFAULT_PROGRESS = {
   inviteCode: '',      // read-only from DB, not written back
 }
 
-function loadLocal() {
+// localStorage is namespaced per user.id. The previous shared key
+// `mm_progress` caused cross-user contamination: if two accounts used the
+// same browser, one's cached state could leak into the other's first
+// render and (worse) be persisted back to DB.
+const CACHE_PREFIX = 'mm_progress:'
+
+function cacheKey(userId) {
+  return userId ? `${CACHE_PREFIX}${userId}` : null
+}
+
+function loadLocal(userId) {
+  if (!userId) return { ...DEFAULT_PROGRESS }
   try {
-    const saved = localStorage.getItem('mm_progress')
+    const saved = localStorage.getItem(cacheKey(userId))
     if (saved) return { ...DEFAULT_PROGRESS, ...JSON.parse(saved) }
   } catch (_) {}
   return { ...DEFAULT_PROGRESS }
 }
 
-function saveLocal(progress) {
+function saveLocal(userId, progress) {
+  if (!userId) return
   try {
-    localStorage.setItem('mm_progress', JSON.stringify(progress))
+    localStorage.setItem(cacheKey(userId), JSON.stringify(progress))
   } catch (_) {}
 }
 
+// One-time migration: previous versions used a single `mm_progress`
+// key. Clear it to avoid it ever overriding new user-scoped data.
+try { localStorage.removeItem('mm_progress') } catch (_) {}
+
 export function ProgressProvider({ children }) {
   const { user } = useAuth()
-  const [progress, setProgress] = useState(loadLocal)
+  // IMPORTANT: never initialize from another user's cache. Start with
+  // defaults; loadFromSupabase + the user-scoped cache will hydrate.
+  const [progress, setProgress] = useState({ ...DEFAULT_PROGRESS })
   const [loading, setLoading] = useState(false)
   const [synced, setSynced] = useState(false)
+  // `dbConfirmed` flips to true only after a successful read (or
+  // bootstrap+reread) from Supabase. UI navigation that depends on real
+  // server state should gate on this flag, NOT on `synced`, which may
+  // have flipped via the safety timer.
+  const [dbConfirmed, setDbConfirmed] = useState(false)
+  const [persistError, setPersistError] = useState(null)
 
   // Sync progress to/from Supabase when user changes
   useEffect(() => {
     if (!user) {
       setProgress({ ...DEFAULT_PROGRESS })
-      localStorage.removeItem('mm_progress')
       setSynced(true)
+      setDbConfirmed(false)
       return
     }
+    // First paint: hydrate from THIS user's local cache (instant) while
+    // we wait for the DB read. If there's no cache, we stay on defaults
+    // until DB confirms.
+    const cached = loadLocal(user.id)
+    setProgress(cached)
     setSynced(false)
-    // Safety timeout: never block the app more than 6 seconds
-    const safetyTimer = setTimeout(() => setSynced(true), 6000)
+    setDbConfirmed(false)
+    // Safety timeout bumped to 12s. Even if it fires, dbConfirmed stays
+    // false so navigation guards still know we don't trust the data.
+    const safetyTimer = setTimeout(() => setSynced(true), 12000)
     loadFromSupabase().finally(() => clearTimeout(safetyTimer))
   }, [user?.id])
 
@@ -96,6 +127,7 @@ export function ProgressProvider({ children }) {
         data = reread.data
       }
 
+      setDbConfirmed(true)
       const remote = {
         ...DEFAULT_PROGRESS,
         xp: data.xp || 0,
@@ -119,7 +151,7 @@ export function ProgressProvider({ children }) {
         inviteCode: data.invite_code || '',
       }
       setProgress(remote)
-      saveLocal(remote)
+      saveLocal(user.id, remote)
     } catch (e) {
       console.warn('Supabase load error (caught):', e)
     } finally {
@@ -130,7 +162,7 @@ export function ProgressProvider({ children }) {
 
   const persistProgress = useCallback(async (newProgress) => {
     setProgress(newProgress)
-    saveLocal(newProgress)
+    if (user?.id) saveLocal(user.id, newProgress)
     if (!user) return
     try {
       // Explicit onConflict: 'user_id' — there's a UNIQUE constraint on
@@ -158,8 +190,38 @@ export function ProgressProvider({ children }) {
         role: newProgress.role || 'student',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' })
+      // Success — clear any prior persist error.
+      setPersistError(null)
     } catch (e) {
       console.warn('Supabase save error:', e)
+      setPersistError(e?.message || 'No se pudo guardar tu progreso.')
+      // Best-effort retry once after 3s — handles transient network blips.
+      setTimeout(() => {
+        supabase.from('user_progress').upsert({
+          user_id: user.id,
+          xp: newProgress.xp,
+          streak: newProgress.streak,
+          last_study_date: newProgress.lastStudyDate,
+          unlocked_topics: newProgress.unlockedTopics,
+          completed_topics: newProgress.completedTopics,
+          topic_stars: newProgress.topicStars,
+          topic_levels: newProgress.topicLevels || {},
+          exercises_total: newProgress.exercisesTotal,
+          exercises_today: newProgress.exercisesToday,
+          correct_total: newProgress.correctTotal,
+          daily_goal: newProgress.dailyGoal,
+          daily_goal_done: newProgress.dailyGoalDone,
+          achievements: newProgress.achievements,
+          current_grade: newProgress.currentGrade,
+          student_name: newProgress.studentName,
+          parent_email: newProgress.parentEmail,
+          assessment_done: newProgress.assessmentDone,
+          role: newProgress.role || 'student',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' }).then(({ error }) => {
+          if (!error) setPersistError(null)
+        })
+      }, 3000)
     }
   }, [user])
 
@@ -363,6 +425,8 @@ export function ProgressProvider({ children }) {
     progress,
     loading,
     synced,
+    dbConfirmed,
+    persistError,
     saveAttempt,
     completeTopic,
     setProfile,

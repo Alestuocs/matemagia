@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProgress } from '../contexts/ProgressContext'
@@ -23,8 +24,15 @@ function getMotivation(progress) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { progress, refreshProgress } = useProgress()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  async function handleSignOut() {
+    setMenuOpen(false)
+    try { await signOut() } catch (e) { console.warn(e) }
+    navigate('/', { replace: true })
+  }
 
   const name = progress.studentName || user?.user_metadata?.full_name?.split(' ')[0] || 'Campeón'
   const avatar = user?.user_metadata?.avatar_url
@@ -62,17 +70,52 @@ export default function Dashboard() {
           </div>
           <p className="text-gray-500 font-semibold text-sm mt-1">{getMotivation(progress)}</p>
         </div>
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center gap-2">
           <button onClick={refreshProgress} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-base active:scale-90 transition-transform" title="Actualizar">
             🔄
           </button>
-          {avatar ? (
-            <img src={avatar} alt={name} className="w-10 h-10 rounded-full border-2 border-magic-300" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-magic-100 flex items-center justify-center text-xl border-2 border-magic-300">
-              {name[0]?.toUpperCase() || '🧒'}
-            </div>
-          )}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(o => !o)}
+              className="rounded-full"
+              aria-label="Menú de usuario"
+            >
+              {avatar ? (
+                <img src={avatar} alt={name} className="w-10 h-10 rounded-full border-2 border-magic-300" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-magic-100 flex items-center justify-center text-xl border-2 border-magic-300">
+                  {name[0]?.toUpperCase() || '🧒'}
+                </div>
+              )}
+            </button>
+            {menuOpen && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  aria-hidden="true"
+                  className="fixed inset-0 z-10 cursor-default bg-transparent"
+                />
+                <div className="absolute right-0 top-12 z-20 w-44 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); navigate('/profile') }}
+                    className="block w-full text-left px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                  >
+                    👤 Mi perfil
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="block w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 border-t border-gray-100"
+                  >
+                    🚪 Cerrar sesión
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
