@@ -1,0 +1,1 @@
+# MateMagia DB snapshots
